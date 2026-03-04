@@ -1,0 +1,18 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="128" y1="56" x2="128" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <g stroke="url(#arrow)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="128" y1="64" x2="128" y2="156"/>
+    <polyline points="90,122 128,160 166,122"/>
+    <line x1="80" y1="200" x2="176" y2="200"/>
+  </g>
+</svg>

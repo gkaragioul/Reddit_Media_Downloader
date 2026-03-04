@@ -1,0 +1,49 @@
+/* ── Title bar ────────────────────────────────────── */
+.title-bar {
+  -webkit-app-region: drag;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: #18181b;
+}
+
+/* ── Scrollbars ──────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(113, 113, 122, 0.5);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(113, 113, 122, 0.3) transparent;
+}
+
+/* ── Interactive elements ────────────────────────── */
+button,
+input {
+  transition: all 150ms ease;
+}
+
+input:focus {
+  outline: none;
+}
+
+/* ── Log area ────────────────────────────────────── */
+.log-area {
+  font-feature-settings: "tnum" 1;
+}
+
+.log-area::-webkit-scrollbar-track {
+  margin: 6px 0;
+}

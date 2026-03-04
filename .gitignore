@@ -72,3 +72,15 @@ iOSInjectionProject/
 # Claude AI
 .claude/
 MASTER_AI*.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# PyInstaller
+*.spec
+dist/
+
+# Windows build artifacts
+build/RedditDownloaderWin/

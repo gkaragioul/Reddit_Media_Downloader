@@ -1,9 +1,12 @@
-# Reddit Profile Downloader
+# Reddit Downloader
 
-A native macOS application built with SwiftUI that downloads public images and videos from Reddit user profiles and subreddits.
+A cross-platform application that downloads public images and videos from Reddit user profiles and subreddits. Available as a native macOS app (SwiftUI), a Windows desktop app (Python/tkinter), and a Windows Electron app (React + TypeScript).
 
 ![macOS](https://img.shields.io/badge/macOS-13.0+-blue.svg)
+![Windows](https://img.shields.io/badge/Windows-10+-0078D6.svg)
 ![Swift](https://img.shields.io/badge/Swift-5.9+-orange.svg)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB.svg)
+![Electron](https://img.shields.io/badge/Electron-40+-47848F.svg)
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 
 ## Features
@@ -12,73 +15,115 @@ A native macOS application built with SwiftUI that downloads public images and v
 - **Photo & Video Downloads**: Automatically extracts and downloads images, videos, and GIFs
 - **Smart Organization**: Files are organized into separate `Photos/` and `Videos/` folders
 - **Duplicate Detection**: Skip already-downloaded files using content hashing (SHA256)
-- **Rate Limiting**: Three speed modes (Polite/Normal/Fast) to avoid API throttling
-- **Concurrent Downloads**: Configurable concurrent download limit (2-4 simultaneous downloads)
-- **Batch Mode**: Process downloads in batches with configurable pause intervals
 - **Pause/Resume/Cancel**: Full control over downloads with state persistence
-- **Network Resilience**: Automatic retry on network failures with exponential backoff
+- **Batch Mode**: Process downloads in batches with configurable pause intervals
 - **RedGifs Support**: Downloads videos from RedGifs links embedded in posts
-- **GIF to MP4 Conversion**: Automatically converts GIF files to MP4 for better compatibility
+- **ffmpeg Integration**: Optional video+audio muxing for Reddit-hosted videos
 
-## Requirements
+## Platforms
 
+### macOS (SwiftUI)
+
+Native macOS application built with SwiftUI and async/await concurrency.
+
+**Requirements:**
 - macOS 13.0 or later
 - Xcode 15.0+ (for building from source)
-- [ffmpeg](https://ffmpeg.org/) (optional, required for video muxing and GIF conversion)
+- [ffmpeg](https://ffmpeg.org/) (optional, for video muxing and GIF conversion)
 
-## Installation
+**Install & Run:**
+```bash
+git clone https://github.com/georgekgr12/RedditDownloader.git
+cd RedditDownloader
+open RedditMediaDownloader.xcodeproj
+# Build and run with Cmd+R
+```
 
-### From Source
-
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/georgekgr12/RedditProfileDownloader.git
-   ```
-
-2. Open `RedditMediaDownloader.xcodeproj` in Xcode
-
-3. Build and run (Cmd+R)
-
-### ffmpeg (Optional)
-
-For full video support (combining video and audio streams), install ffmpeg:
-
+**Install ffmpeg (optional):**
 ```bash
 brew install ffmpeg
 ```
 
-The app searches for ffmpeg in these locations:
-- `/opt/homebrew/bin/ffmpeg` (Apple Silicon)
-- `/usr/local/bin/ffmpeg` (Intel)
-- `/usr/bin/ffmpeg`
+**Additional macOS features:**
+- Rate limiting with three speed modes (Polite/Normal/Fast)
+- Configurable concurrent downloads (2-4 simultaneous)
+- Network monitoring with automatic pause/resume
+- GIF to MP4 conversion
+
+---
+
+### Windows Native (Python/tkinter)
+
+Standalone Windows desktop application with a dark-themed UI.
+
+**Requirements:**
+- Python 3.10+
+- [ffmpeg](https://ffmpeg.org/) on PATH (optional, for video muxing)
+
+**Install & Run:**
+```bash
+git clone https://github.com/georgekgr12/RedditDownloader.git
+cd RedditDownloader
+pip install requests pillow
+python windows_reddit_downloader.py
+```
+
+**Build portable EXE:**
+```bash
+pip install pyinstaller
+build_portable_windows.bat
+```
+
+**Additional features:**
+- Configurable request delay
+- Activity log with timestamps
+- Settings dialog for batch size, pause intervals, and duplicate detection
+
+---
+
+### Windows Electron (React + TypeScript)
+
+Modern Windows desktop application built with Electron, React, TypeScript, Vite, and Tailwind CSS. Bundles ffmpeg automatically.
+
+**Requirements:**
+- Node.js 18+
+
+**Install & Run:**
+```bash
+git clone https://github.com/georgekgr12/RedditDownloader.git
+cd RedditDownloader/electron_app
+npm install
+npm run electron:dev
+```
+
+**Build portable EXE:**
+```bash
+npm run dist
+# Output in dist-electron/
+```
+
+**Additional features:**
+- Modern React UI with Tailwind CSS styling
+- Bundled ffmpeg (no separate install needed)
+- Electron-based with full desktop integration
 
 ## Usage
 
-1. Launch the app
+1. Launch the app on your platform
 2. Enter a Reddit username, profile URL, or subreddit:
    - `username`
    - `u/username`
    - `r/subreddit`
    - `https://www.reddit.com/user/username/`
    - `https://www.reddit.com/r/subreddit/`
-
-3. Click **Download**
+3. Click **Download** / **Start Download**
 4. Files are saved to: `~/Downloads/RedditDownloads/<source>_<timestamp>/`
-
-### Settings
-
-Access settings via the gear icon:
-
-- **Speed Mode**: Polite (2s delay), Normal (1s delay), Fast (0.5s delay)
-- **Concurrent Downloads**: 2, 3, or 4 simultaneous downloads
-- **Skip Duplicates**: Enable content-based duplicate detection
-- **Batch Mode**: Download in batches with configurable pause intervals
 
 ## Output Structure
 
 ```
 ~/Downloads/RedditDownloads/
-  u_username_20260125_143052/
+  user_username_20260125_143052/
     Photos/
       20260120_abc123_post-title_001.jpg
       20260119_def456_another-post_001.png
@@ -95,21 +140,13 @@ YYYYMMDD_postId_titleSlug_index.extension
 
 - `YYYYMMDD`: Post creation date
 - `postId`: Reddit post ID for reference
-- `titleSlug`: Sanitized post title (max 50 chars)
+- `titleSlug`: Sanitized post title (max 50-80 chars)
 - `index`: Media index for posts with multiple files
 - `extension`: Original file extension
 
-## Technical Details
-
-- Built with SwiftUI and async/await concurrency
-- Uses Reddit's public JSON API (no authentication required)
-- Implements exponential backoff for rate limiting
-- SHA256 content hashing for duplicate detection
-- Network monitoring with automatic pause/resume
-
 ## Version
 
-**1.0** - Initial Release
+**3.0** - Cross-platform release (macOS, Windows Native, Windows Electron)
 
 ## Author
 
@@ -119,8 +156,6 @@ Contact: see https://github.com/gkaragioul
 ## License
 
 This software is proprietary. All rights reserved.
-
-See the in-app EULA for full license terms.
 
 ---
 
