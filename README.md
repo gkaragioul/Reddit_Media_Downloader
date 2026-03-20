@@ -117,13 +117,13 @@ npm run dist
    - `https://www.reddit.com/user/username/`
    - `https://www.reddit.com/r/subreddit/`
 3. Click **Download** / **Start Download**
-4. Files are saved to: `~/Downloads/RedditDownloads/<source>_<timestamp>/`
+4. Files are saved to: `~/Downloads/<username or subreddit>/`
 
 ## Output Structure
 
 ```
-~/Downloads/RedditDownloads/
-  user_username_20260125_143052/
+~/Downloads/
+  username/
     Photos/
       20260120_abc123_post-title_001.jpg
       20260119_def456_another-post_001.png
@@ -145,6 +145,8 @@ YYYYMMDD_postId_titleSlug_index.extension
 - `extension`: Original file extension
 
 ## Version
+
+**3.1** - Simplified download folder structure — saves directly to `Downloads/<name>/`
 
 **3.0** - Cross-platform release (macOS, Windows Native, Windows Electron)
 

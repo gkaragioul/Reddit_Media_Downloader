@@ -490,8 +490,7 @@ class App:
 
         try:
             kind, value = normalize_input(self.input_var.get())
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            target_root = Path.home() / "Downloads" / "RedditDownloads" / f"{kind}_{value}_{stamp}"
+            target_root = Path.home() / "Downloads" / value
             photos = target_root / "Photos"
             videos = target_root / "Videos"
             photos.mkdir(parents=True, exist_ok=True)

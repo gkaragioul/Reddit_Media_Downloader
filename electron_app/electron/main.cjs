@@ -81,9 +81,7 @@ ipcMain.on('stop-download', () => {
 ipcMain.on('open-output-folder', () => {
     const fs = require('fs');
     const folder = downloader?.getOutputFolder();
-    const redditDir = path.join(app.getPath('downloads'), 'RedditDownloads');
     const target = folder && fs.existsSync(folder) ? folder
-        : fs.existsSync(redditDir) ? redditDir
         : app.getPath('downloads');
     shell.openPath(target);
 });

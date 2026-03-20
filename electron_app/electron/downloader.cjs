@@ -441,8 +441,7 @@ class RedditDownloader {
       const { kind, value } = normalizeInput(input);
       this._log(`Fetching posts for ${kind}/${value}`);
 
-      const stamp = nowStamp();
-      const targetRoot = path.join(os.homedir(), 'Downloads', 'RedditDownloads', `${kind}_${value}_${stamp}`);
+      const targetRoot = path.join(os.homedir(), 'Downloads', value);
       const photosDir = path.join(targetRoot, 'Photos');
       const videosDir = path.join(targetRoot, 'Videos');
       fs.mkdirSync(photosDir, { recursive: true });
