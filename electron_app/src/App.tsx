@@ -94,13 +94,13 @@ export default function App() {
     });
 
     // Auto-check for updates on startup (silent)
-    window.electronAPI?.checkForUpdates(true).then((update) => {
-      if (update) {
-        const doUpdate = confirm(`A new version (${update.version}) is available.\n\nRelease Notes:\n${update.releaseNotes}\n\nDo you want to update now?`);
+    window.electronAPI?.checkForUpdates(true).then((result) => {
+      if (result?.version) {
+        const doUpdate = confirm(`A new version (${result.version}) is available.\n\nRelease Notes:\n${result.releaseNotes}\n\nDo you want to update now?`);
         if (doUpdate) {
-          performUpdate(update);
+          performUpdate(result);
         } else {
-          window.electronAPI?.dismissUpdate(update.version);
+          window.electronAPI?.dismissUpdate(result.version);
         }
       }
     }).catch(() => {});
@@ -199,15 +199,19 @@ export default function App() {
   const handleCheckUpdates = useCallback(async () => {
     setUpdateStatus('Checking...');
     try {
-      const update = await window.electronAPI?.checkForUpdates(false);
-      if (update) {
+      const result = await window.electronAPI?.checkForUpdates(false);
+      if (result?.error) {
+        setUpdateStatus('Check failed');
+        alert(`Update check failed:\n${result.error}`);
+        setTimeout(() => setUpdateStatus(''), 3000);
+      } else if (result?.version) {
         const doUpdate = confirm(
-          `A new version (${update.version}) is available.\n\nRelease Notes:\n${update.releaseNotes}\n\nDo you want to update now?`,
+          `A new version (${result.version}) is available.\n\nRelease Notes:\n${result.releaseNotes}\n\nDo you want to update now?`,
         );
         if (doUpdate) {
-          await performUpdate(update);
+          await performUpdate(result);
         } else {
-          window.electronAPI?.dismissUpdate(update.version);
+          window.electronAPI?.dismissUpdate(result.version);
           setUpdateStatus('');
         }
       } else {

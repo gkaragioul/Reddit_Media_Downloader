@@ -299,7 +299,7 @@ ipcMain.handle('check-for-updates', async (_event, isAuto) => {
         };
     } catch (err) {
         console.error('Update check failed:', err.message);
-        return null;
+        return { error: err.message };
     }
 });
 
