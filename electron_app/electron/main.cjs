@@ -71,7 +71,7 @@ function cleanupOrphanedScripts() {
         const tempDir = app.getPath('temp');
         const files = fs.readdirSync(tempDir);
         for (const file of files) {
-            if (file.startsWith('gkmd_relaunch_') && file.endsWith('.ps1')) {
+            if (file.startsWith('gkmd_relaunch_') && (file.endsWith('.cmd') || file.endsWith('.ps1'))) {
                 try { fs.unlinkSync(path.join(tempDir, file)); } catch {}
             }
         }
@@ -346,37 +346,35 @@ ipcMain.on('install-update', (_event, installerPath, version) => {
     const appExePath = process.execPath;
     const logPath = path.join(app.getPath('temp'), 'gkmd_install.log');
 
-    // Create PowerShell helper script (same pattern as MyLocalBackup)
-    // The script: waits for current process to exit → runs installer silently → relaunches app
-    const helperScript = path.join(app.getPath('temp'), `gkmd_relaunch_${Date.now()}.ps1`);
+    // Create a batch script that:
+    // 1. Waits for the current app to exit
+    // 2. Runs the NSIS installer silently (/S = no UAC needed for per-user install)
+    // 3. Relaunches the updated app
+    // 4. Cleans up after itself
+    //
+    // Using a .cmd script launched via "cmd /c start" ensures the process
+    // gets its own console session and survives the parent Electron process exiting.
+    // This is the equivalent of .NET's UseShellExecute=true.
+    const helperScript = path.join(app.getPath('temp'), `gkmd_relaunch_${Date.now()}.cmd`);
     const scriptLines = [
-        `$installer = '${installerPath.replace(/'/g, "''")}'`,
-        `$log = '${logPath.replace(/'/g, "''")}'`,
-        `$app = '${appExePath.replace(/'/g, "''")}'`,
-        `Start-Sleep -Seconds 2`,
-        `# Run NSIS installer silently (/S = silent mode)`,
-        `$proc = Start-Process $installer -ArgumentList '/S' -Wait -PassThru`,
-        `if ($proc.ExitCode -ne 0) {`,
-        `  Add-Content $log "Installer exited with code $($proc.ExitCode)"`,
-        `}`,
-        `Start-Sleep -Seconds 1`,
-        `if (Test-Path $app) { Start-Process $app }`,
-        `Remove-Item $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue`,
+        `@echo off`,
+        `timeout /t 3 /nobreak >nul`,
+        `"${installerPath}" /S`,
+        `if %ERRORLEVEL% neq 0 (`,
+        `  echo Installer exited with code %ERRORLEVEL% >> "${logPath}"`,
+        `)`,
+        `timeout /t 2 /nobreak >nul`,
+        `if exist "${appExePath}" start "" "${appExePath}"`,
+        `del "%~f0"`,
     ];
 
     fs.writeFileSync(helperScript, scriptLines.join('\r\n'), 'utf-8');
 
-    // Launch the PowerShell script hidden and detached
-    // UseShellExecute equivalent: spawn with shell + detached
-    const child = spawn('powershell.exe', [
-        '-ExecutionPolicy', 'Bypass',
-        '-NonInteractive',
-        '-WindowStyle', 'Hidden',
-        '-File', helperScript,
-    ], {
+    // Launch via "cmd /c start" — this creates an independent process with its own
+    // console session that reliably survives the parent Electron process exiting.
+    const child = spawn('cmd.exe', ['/c', 'start', '""', '/min', helperScript], {
         detached: true,
         stdio: 'ignore',
-        shell: false,
         windowsHide: true,
     });
     child.unref();
