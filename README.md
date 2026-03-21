@@ -61,7 +61,7 @@ npm run dist
 
 ## Version
 
-**4.0.0** — Full rebrand to GKMD, video download fixes, media filter, auto-updates
+**4.1.2** — Fix audio download 403 errors, Electron startup fix, full rebrand to GKMD
 
 ## Author
 
