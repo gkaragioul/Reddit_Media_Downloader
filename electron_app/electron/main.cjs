@@ -6,8 +6,6 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const RedditDownloader = require('./downloader.cjs');
 
-Menu.setApplicationMenu(null);
-
 let downloader = null;
 
 // ── Update constants ────────────────────────────────────────
@@ -55,6 +53,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+    Menu.setApplicationMenu(null);
     // Clean up orphaned update scripts from previous runs
     cleanupOrphanedScripts();
 

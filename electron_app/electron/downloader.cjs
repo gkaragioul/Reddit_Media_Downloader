@@ -70,14 +70,15 @@ function audioCandidatesFromVideo(videoUrl) {
     const p = parsed.pathname;
     const base = p.substring(0, p.lastIndexOf('/'));
     const origin = `${parsed.protocol}//${parsed.host}${base}`;
+    const qs = parsed.search || ''; // preserve auth tokens from video URL
     // Reddit uses multiple audio URL patterns (CMAF is current, DASH is legacy)
     return [
-      `${origin}/CMAF_AUDIO_128.mp4`,
-      `${origin}/CMAF_AUDIO_64.mp4`,
-      `${origin}/DASH_AUDIO_128.mp4`,
-      `${origin}/DASH_audio.mp4`,
-      `${origin}/DASH_AUDIO_64.mp4`,
-      `${origin}/audio`,
+      `${origin}/CMAF_AUDIO_128.mp4${qs}`,
+      `${origin}/CMAF_AUDIO_64.mp4${qs}`,
+      `${origin}/DASH_AUDIO_128.mp4${qs}`,
+      `${origin}/DASH_audio.mp4${qs}`,
+      `${origin}/DASH_AUDIO_64.mp4${qs}`,
+      `${origin}/audio${qs}`,
     ];
   } catch {
     return [];
