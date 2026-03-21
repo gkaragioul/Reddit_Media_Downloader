@@ -70,8 +70,10 @@ function audioCandidatesFromVideo(videoUrl) {
     const p = parsed.pathname;
     const base = p.substring(0, p.lastIndexOf('/'));
     const origin = `${parsed.protocol}//${parsed.host}${base}`;
-    // Reddit uses multiple audio URL patterns — try all of them
+    // Reddit uses multiple audio URL patterns (CMAF is current, DASH is legacy)
     return [
+      `${origin}/CMAF_AUDIO_128.mp4`,
+      `${origin}/CMAF_AUDIO_64.mp4`,
       `${origin}/DASH_AUDIO_128.mp4`,
       `${origin}/DASH_audio.mp4`,
       `${origin}/DASH_AUDIO_64.mp4`,
