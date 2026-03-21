@@ -112,7 +112,7 @@ function getMediaEntries(postData) {
     effectivePost.preview?.reddit_video_preview?.fallback_url ||
     postData.preview?.reddit_video_preview?.fallback_url;
   if (previewVideo) {
-    add(previewVideo, 'reddit_video', audioCandidateFromVideo(previewVideo));
+    add(previewVideo, 'reddit_video', audioCandidatesFromVideo(previewVideo));
   }
 
   // 3. Direct URL (skip v.redd.it links since they're handled above as reddit_video)

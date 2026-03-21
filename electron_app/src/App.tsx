@@ -41,6 +41,7 @@ declare global {
       pauseDownload: () => void;
       stopDownload: () => void;
       openOutputFolder: () => void;
+      saveLogs: (logLines: string[]) => Promise<{ success: boolean; filePath?: string; message?: string }>;
       checkForUpdates: (isAuto?: boolean) => Promise<UpdateInfo | null>;
       dismissUpdate: (version: string) => Promise<void>;
       downloadUpdate: (url: string, fileName: string, expectedSha256?: string | null) => Promise<{ success: boolean; message?: string; filePath?: string }>;
@@ -459,6 +460,17 @@ export default function App() {
             className="text-indigo-400 hover:text-indigo-300 transition-colors"
           >
             About
+          </button>
+          <span className="text-zinc-700 mx-2">|</span>
+          <button
+            onClick={() => {
+              if (logs.length === 0) return;
+              window.electronAPI?.saveLogs(logs);
+            }}
+            disabled={logs.length === 0}
+            className="text-indigo-400 hover:text-indigo-300 transition-colors disabled:text-zinc-600 disabled:cursor-default"
+          >
+            Logs
           </button>
         </div>
       </footer>

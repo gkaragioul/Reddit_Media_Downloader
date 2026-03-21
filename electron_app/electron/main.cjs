@@ -278,6 +278,23 @@ ipcMain.on('open-output-folder', () => {
     shell.openPath(target);
 });
 
+ipcMain.handle('save-logs', async (_event, logLines) => {
+    try {
+        const logsDir = path.join(app.getPath('userData'), 'logs');
+        fs.mkdirSync(logsDir, { recursive: true });
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+        const filePath = path.join(logsDir, `gkmd_log_${ts}.txt`);
+        const content = `GKMediaDownloader v${app.getVersion()} — Log exported ${now.toISOString()}\n${'─'.repeat(60)}\n\n${logLines.join('\n')}\n`;
+        fs.writeFileSync(filePath, content, 'utf-8');
+        shell.showItemInFolder(filePath);
+        return { success: true, filePath };
+    } catch (err) {
+        return { success: false, message: err.message };
+    }
+});
+
 // ── Update IPC Handlers ──────────────────────────────────────
 
 ipcMain.handle('get-version', () => {

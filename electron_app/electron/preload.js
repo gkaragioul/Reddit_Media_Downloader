@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     pauseDownload: () => ipcRenderer.send('pause-download'),
     stopDownload: () => ipcRenderer.send('stop-download'),
     openOutputFolder: () => ipcRenderer.send('open-output-folder'),
+    saveLogs: (logLines) => ipcRenderer.invoke('save-logs', logLines),
 
     // Update system
     getVersion: () => ipcRenderer.invoke('get-version'),
