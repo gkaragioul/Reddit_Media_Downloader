@@ -20,6 +20,10 @@ const APP_DATA_DIR = path.join(app.getPath('userData'));
 const DISMISSED_VERSION_FILE = path.join(APP_DATA_DIR, 'dismissed_update.txt');
 const PENDING_UPDATE_FILE = path.join(APP_DATA_DIR, 'pending_update.txt');
 
+// ETag cache for GitHub API (avoids rate limit on repeated checks)
+let cachedETag = null;
+let cachedRelease = null;
+
 function createWindow() {
     const win = new BrowserWindow({
         width: 860,
@@ -81,31 +85,50 @@ function cleanupOrphanedScripts() {
 
 // ── HTTP helpers ─────────────────────────────────────────────
 
-function httpsGetJson(url) {
+function httpsGetJson(url, useETagCache = false) {
     return new Promise((resolve, reject) => {
-        const options = {
-            headers: {
-                'User-Agent': `GKMD/${app.getVersion()}`,
-                'Accept': 'application/vnd.github.v3+json',
-            },
-            timeout: 15000,
+        const headers = {
+            'User-Agent': `GKMediaDownloader/${app.getVersion()}`,
+            'Accept': 'application/vnd.github.v3+json',
         };
 
+        // Add ETag header if we have a cached response (304 Not Modified doesn't count against rate limit)
+        if (useETagCache && cachedETag) {
+            headers['If-None-Match'] = cachedETag;
+        }
+
+        const options = { headers, timeout: 15000 };
+
         https.get(url, options, (res) => {
+            // 304 Not Modified — return cached data (doesn't count against rate limit)
+            if (res.statusCode === 304 && cachedRelease) {
+                res.resume();
+                return resolve(cachedRelease);
+            }
             if (res.statusCode === 301 || res.statusCode === 302) {
                 const location = res.headers.location;
                 res.resume();
-                if (location) return httpsGetJson(location).then(resolve, reject);
+                if (location) return httpsGetJson(location, useETagCache).then(resolve, reject);
                 return reject(new Error('Redirect without location'));
             }
             if (res.statusCode !== 200) {
                 res.resume();
                 return reject(new Error(`GitHub API returned ${res.statusCode}`));
             }
+
+            // Cache ETag for future requests
+            if (useETagCache && res.headers.etag) {
+                cachedETag = res.headers.etag;
+            }
+
             let data = '';
             res.on('data', (chunk) => (data += chunk));
             res.on('end', () => {
-                try { resolve(JSON.parse(data)); }
+                try {
+                    const parsed = JSON.parse(data);
+                    if (useETagCache) cachedRelease = parsed;
+                    resolve(parsed);
+                }
                 catch { reject(new Error('Failed to parse GitHub response')); }
             });
             res.on('error', reject);
@@ -267,7 +290,7 @@ ipcMain.handle('check-pending-update-failed', () => {
 
 ipcMain.handle('check-for-updates', async (_event, isAuto) => {
     try {
-        const release = await httpsGetJson(GITHUB_API_URL);
+        const release = await httpsGetJson(GITHUB_API_URL, true);
         const tagName = release.tag_name;
         if (!tagName) return null;
 
