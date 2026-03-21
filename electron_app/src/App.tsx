@@ -236,7 +236,7 @@ export default function App() {
               <line x1="84" y1="196" x2="172" y2="196" />
             </g>
           </svg>
-          <span className="text-[11px] font-medium text-zinc-400 select-none">GeorgeK Media Downloader</span>
+          <span className="text-[11px] font-medium text-zinc-400 select-none">GKMediaDownloader</span>
         </div>
       </header>
 
@@ -463,7 +463,7 @@ export default function App() {
       {showAbout && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-zinc-800 border border-zinc-600/60 rounded-xl w-[420px] max-h-[360px] p-6 flex flex-col gap-4 shadow-2xl">
-            <h2 className="text-[16px] font-bold text-zinc-100">About GeorgeK Media Downloader</h2>
+            <h2 className="text-[16px] font-bold text-zinc-100">About GKMediaDownloader</h2>
             <div className="flex-1 overflow-y-auto space-y-3 text-[12px]">
               <div>
                 <span className="text-zinc-300 font-semibold">Developer:</span>{' '}

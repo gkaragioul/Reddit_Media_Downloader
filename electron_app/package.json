@@ -17,7 +17,7 @@
   },
   "build": {
     "appId": "com.gkmd.app",
-    "productName": "GKMD",
+    "productName": "GKMediaDownloader",
     "directories": {
       "output": "dist-electron"
     },
@@ -37,7 +37,7 @@
       "installerSidebar": null,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "GKMD",
+      "shortcutName": "GKMediaDownloader",
       "runAfterFinish": false
     },
     "files": [

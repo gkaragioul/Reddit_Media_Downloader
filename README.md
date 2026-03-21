@@ -1,4 +1,4 @@
-# GKMD — GeorgeK Media Downloader
+# GKMediaDownloader
 
 A Windows desktop application that downloads public images and videos from Reddit user profiles and subreddits. Built with Electron, React, TypeScript, and Tailwind CSS with bundled ffmpeg.
 

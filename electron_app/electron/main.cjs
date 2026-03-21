@@ -12,7 +12,7 @@ let downloader = null;
 
 // ── Update constants ────────────────────────────────────────
 const REPO_OWNER = 'georgekgr12';
-const REPO_NAME = 'GKMD-releases';
+const REPO_NAME = 'GK_Media_Downloader_Releases';
 const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
 
 // AppData dir for update state persistence

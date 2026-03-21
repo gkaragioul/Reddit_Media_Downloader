@@ -1,7 +1,7 @@
-# GKMD - GeorgeK Media Downloader
+# GKMediaDownloader
 
 ## Project Overview
-Desktop app (Electron + React + TypeScript) that downloads media (photos & videos) from Reddit user profiles and subreddits. Previously called "Reddit Downloader", now rebranded to **GKMD** (GeorgeK Media Downloader).
+Desktop app (Electron + React + TypeScript) that downloads media (photos & videos) from Reddit user profiles and subreddits. Previously called "Reddit Downloader", now rebranded to **GKMediaDownloader**.
 
 ## Architecture
 - **Frontend**: React + TypeScript + Tailwind CSS + Lucide icons (in `electron_app/src/`)
@@ -31,30 +31,30 @@ npm run dist            # Build NSIS installer .exe
 
 ## Version & Updates
 - Version is set in `electron_app/package.json` → `"version"` field
-- Update system checks GitHub releases at `georgekgr12/GKMD-releases`
+- Update system checks GitHub releases at `georgekgr12/GK_Media_Downloader_Releases`
 - Update flow (matches MyLocalBackup pattern):
-  1. Check `api.github.com/repos/georgekgr12/GKMD-releases/releases/latest`
+  1. Check `api.github.com/repos/georgekgr12/GK_Media_Downloader_Releases/releases/latest`
   2. Compare tag version with current app version
   3. Prompt user with release notes
   4. Download installer to temp (with SHA256 verification if hash in release notes)
-  5. Create PowerShell helper script that: waits → runs installer silently (`/S`) → relaunches app
+  5. Create PowerShell helper script that: waits → runs installer silently (`/S`) with UAC elevation → relaunches app
   6. Quit current app, let helper script handle the rest
 - Failed update detection: writes pending marker before install, checks on next launch
 - Dismissed version tracking: user can skip a version, won't be prompted again (auto-check)
 - Version displayed in footer bar (bottom-left)
 
 ## GitHub
-- Source repo: Private development repo
-- Releases repo: `https://github.com/georgekgr12/GKMD-releases` (public, for auto-updates)
+- Source repo: `https://github.com/georgekgr12/GK_Media_Downloader_Source` (private)
+- Releases repo: `https://github.com/georgekgr12/GK_Media_Downloader_Releases` (public, for auto-updates)
 - Releases should contain the NSIS `.exe` installer with SHA256 hash in release notes body
 - SHA256 format in release notes: `SHA256: <64-char hex>`
 
 ## App Branding
 - Package name: `gkmd`
 - App ID: `com.gkmd.app`
-- Product name: `GKMD`
-- Display title in app: "GeorgeK Media Downloader"
-- Desktop shortcut name: "GKMD"
+- Product name: `GKMediaDownloader`
+- Display title in app: "GKMediaDownloader"
+- Desktop shortcut name: "GKMediaDownloader"
 
 ## Features
 - Download photos and videos from Reddit users/subreddits

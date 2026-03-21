@@ -1,5 +1,5 @@
 /**
- * GKMD — GeorgeK Media Downloader engine.
+ * GKMediaDownloader engine.
  * Node.js built-in modules only.
  */
 
