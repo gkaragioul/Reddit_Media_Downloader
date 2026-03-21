@@ -1,7 +1,7 @@
 {
   "name": "gkmd",
   "private": true,
-  "version": "4.0.2",
+  "version": "4.0.3",
   "description": "GeorgeK Media Downloader - Download media from Reddit profiles and subreddits",
   "author": "George Karagioules",
   "type": "module",
@@ -29,8 +29,8 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": false,
-      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": true,
       "license": "assets/license.txt",
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",

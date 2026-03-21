@@ -71,7 +71,8 @@ function cleanupOrphanedScripts() {
         const tempDir = app.getPath('temp');
         const files = fs.readdirSync(tempDir);
         for (const file of files) {
-            if (file.startsWith('gkmd_relaunch_') && (file.endsWith('.cmd') || file.endsWith('.ps1'))) {
+            if ((file.startsWith('gkmd_relaunch_') || file.startsWith('gkmd_launcher_')) &&
+                (file.endsWith('.cmd') || file.endsWith('.ps1') || file.endsWith('.vbs'))) {
                 try { fs.unlinkSync(path.join(tempDir, file)); } catch {}
             }
         }
@@ -342,40 +343,44 @@ ipcMain.on('install-update', (_event, installerPath, version) => {
     // Write pending update marker so next launch can detect if install failed
     writePendingUpdateMarker(version);
 
-    // Get the current exe path so the helper script can relaunch it
     const appExePath = process.execPath;
-    const logPath = path.join(app.getPath('temp'), 'gkmd_install.log');
+    const tempDir = app.getPath('temp');
+    const ts = Date.now();
 
-    // Create a batch script that:
-    // 1. Waits for the current app to exit
-    // 2. Runs the NSIS installer silently (/S = no UAC needed for per-user install)
-    // 3. Relaunches the updated app
-    // 4. Cleans up after itself
-    //
-    // Using a .cmd script launched via "cmd /c start" ensures the process
-    // gets its own console session and survives the parent Electron process exiting.
-    // This is the equivalent of .NET's UseShellExecute=true.
-    const helperScript = path.join(app.getPath('temp'), `gkmd_relaunch_${Date.now()}.cmd`);
-    const scriptLines = [
-        `@echo off`,
-        `timeout /t 3 /nobreak >nul`,
-        `"${installerPath}" /S`,
-        `if %ERRORLEVEL% neq 0 (`,
-        `  echo Installer exited with code %ERRORLEVEL% >> "${logPath}"`,
-        `)`,
-        `timeout /t 2 /nobreak >nul`,
-        `if exist "${appExePath}" start "" "${appExePath}"`,
-        `del "%~f0"`,
+    // ── Step 1: PowerShell script (does the actual work) ──
+    // Mirrors MyLocalBackup: Start-Process -Verb RunAs -Wait for UAC elevation,
+    // then relaunch the app after install completes.
+    const ps1Path = path.join(tempDir, `gkmd_relaunch_${ts}.ps1`);
+    const ps1Lines = [
+        `Start-Sleep -Seconds 3`,
+        `$proc = Start-Process -FilePath '${installerPath.replace(/'/g, "''")}' -ArgumentList '/S' -Verb RunAs -Wait -PassThru`,
+        `if ($proc.ExitCode -ne 0) {`,
+        `  Add-Content '${path.join(tempDir, 'gkmd_install.log').replace(/'/g, "''")}' "Installer exited with code $($proc.ExitCode)"`,
+        `}`,
+        `Start-Sleep -Seconds 2`,
+        `if (Test-Path '${appExePath.replace(/'/g, "''")}') { Start-Process '${appExePath.replace(/'/g, "''")}' }`,
+        `Remove-Item '${ps1Path.replace(/'/g, "''")}' -Force -ErrorAction SilentlyContinue`,
     ];
+    fs.writeFileSync(ps1Path, ps1Lines.join('\r\n'), 'utf-8');
 
-    fs.writeFileSync(helperScript, scriptLines.join('\r\n'), 'utf-8');
+    // ── Step 2: VBScript launcher (equivalent of .NET UseShellExecute=true) ──
+    // WScript.Shell.Run gives the child process its own desktop session,
+    // which is required for UAC prompts and GUI app launches to work.
+    // This is the exact mechanism MyLocalBackup uses via .NET's UseShellExecute.
+    const vbsPath = path.join(tempDir, `gkmd_launcher_${ts}.vbs`);
+    const vbsContent = [
+        `Set ws = CreateObject("WScript.Shell")`,
+        `ws.Run "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File ""${ps1Path}""", 0, True`,
+        `CreateObject("Scripting.FileSystemObject").DeleteFile WScript.ScriptFullName`,
+    ].join('\r\n');
+    fs.writeFileSync(vbsPath, vbsContent, 'utf-8');
 
-    // Launch via "cmd /c start" — this creates an independent process with its own
-    // console session that reliably survives the parent Electron process exiting.
-    const child = spawn('cmd.exe', ['/c', 'start', '""', '/min', helperScript], {
+    // ── Step 3: Launch the VBScript ──
+    // wscript.exe runs the VBS which launches PowerShell with its own session.
+    // detached + unref ensures the process survives Electron exiting.
+    const child = spawn('wscript.exe', [vbsPath], {
         detached: true,
         stdio: 'ignore',
-        windowsHide: true,
     });
     child.unref();
 
