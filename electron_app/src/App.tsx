@@ -26,6 +26,14 @@ interface CompleteData {
   cancelled?: boolean;
 }
 
+interface UpdateInfo {
+  version: string;
+  downloadUrl: string;
+  releaseNotes: string;
+  fileName: string;
+  expectedSha256?: string | null;
+}
+
 declare global {
   interface Window {
     electronAPI?: {
@@ -33,9 +41,16 @@ declare global {
       pauseDownload: () => void;
       stopDownload: () => void;
       openOutputFolder: () => void;
+      checkForUpdates: (isAuto?: boolean) => Promise<UpdateInfo | null>;
+      dismissUpdate: (version: string) => Promise<void>;
+      downloadUpdate: (url: string, fileName: string, expectedSha256?: string | null) => Promise<{ success: boolean; message?: string; filePath?: string }>;
+      installUpdate: (filePath: string, version: string) => void;
+      getVersion: () => Promise<string>;
+      checkPendingUpdateFailed: () => Promise<string | null>;
       onDownloadProgress: (cb: (data: ProgressData) => void) => () => void;
       onDownloadLog: (cb: (msg: string) => void) => () => void;
       onDownloadComplete: (cb: (data: CompleteData) => void) => () => void;
+      onUpdateDownloadProgress: (cb: (pct: number) => void) => () => void;
     };
   }
 }
@@ -50,9 +65,14 @@ export default function App() {
   const [stats, setStats] = useState({ downloaded: 0, skipped: 0 });
   const [logs, setLogs] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [appVersion, setAppVersion] = useState('');
+  const [updateStatus, setUpdateStatus] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
   const [settings, setSettings] = useState({
     skipDuplicates: true,
     requestDelay: 0.5,
+    mediaFilter: 'both' as 'both' | 'photos' | 'videos',
   });
 
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -61,6 +81,30 @@ export default function App() {
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
+
+  // Get app version + check for pending update failure on mount
+  useEffect(() => {
+    window.electronAPI?.getVersion().then((v) => setAppVersion(v));
+
+    // Check if a previous update failed to apply
+    window.electronAPI?.checkPendingUpdateFailed().then((failedVersion) => {
+      if (failedVersion) {
+        alert(`The previous update to ${failedVersion} did not install successfully.\n\nPlease try updating again, or download the installer manually from GitHub.`);
+      }
+    });
+
+    // Auto-check for updates on startup (silent)
+    window.electronAPI?.checkForUpdates(true).then((update) => {
+      if (update) {
+        const doUpdate = confirm(`A new version (${update.version}) is available.\n\nRelease Notes:\n${update.releaseNotes}\n\nDo you want to update now?`);
+        if (doUpdate) {
+          performUpdate(update);
+        } else {
+          window.electronAPI?.dismissUpdate(update.version);
+        }
+      }
+    }).catch(() => {});
+  }, []);
 
   // IPC listeners
   useEffect(() => {
@@ -84,10 +128,15 @@ export default function App() {
       }
     });
 
+    const cleanupUpdateProgress = window.electronAPI?.onUpdateDownloadProgress((pct) => {
+      setUpdateStatus(`Downloading: ${pct}%`);
+    });
+
     return () => {
       cleanupProgress?.();
       cleanupLog?.();
       cleanupComplete?.();
+      cleanupUpdateProgress?.();
     };
   }, []);
 
@@ -119,6 +168,58 @@ export default function App() {
     if (e.key === 'Enter') handleStart();
   };
 
+  // ── Update flow (matches MyLocalBackup pattern) ──────────
+
+  const performUpdate = useCallback(async (update: UpdateInfo) => {
+    setIsUpdating(true);
+    setUpdateStatus('Downloading...');
+    try {
+      const result = await window.electronAPI?.downloadUpdate(
+        update.downloadUrl,
+        update.fileName,
+        update.expectedSha256,
+      );
+
+      if (result?.success && result.filePath) {
+        setUpdateStatus('Installing update...');
+        window.electronAPI?.installUpdate(result.filePath, update.version);
+        // App will quit — the PowerShell script handles the rest
+      } else {
+        alert(`Update failed: ${result?.message || 'Download failed'}`);
+        setUpdateStatus('');
+        setIsUpdating(false);
+      }
+    } catch (err) {
+      alert(`Update failed: ${err}`);
+      setUpdateStatus('');
+      setIsUpdating(false);
+    }
+  }, []);
+
+  const handleCheckUpdates = useCallback(async () => {
+    setUpdateStatus('Checking...');
+    try {
+      const update = await window.electronAPI?.checkForUpdates(false);
+      if (update) {
+        const doUpdate = confirm(
+          `A new version (${update.version}) is available.\n\nRelease Notes:\n${update.releaseNotes}\n\nDo you want to update now?`,
+        );
+        if (doUpdate) {
+          await performUpdate(update);
+        } else {
+          window.electronAPI?.dismissUpdate(update.version);
+          setUpdateStatus('');
+        }
+      } else {
+        setUpdateStatus('Up to date');
+        setTimeout(() => setUpdateStatus(''), 3000);
+      }
+    } catch {
+      setUpdateStatus('Check failed');
+      setTimeout(() => setUpdateStatus(''), 3000);
+    }
+  }, [performUpdate]);
+
   return (
     <div className="h-screen w-full bg-zinc-900 text-zinc-100 flex flex-col overflow-hidden">
       {/* ── Title bar ─────────────────────────────────────── */}
@@ -135,12 +236,12 @@ export default function App() {
               <line x1="84" y1="196" x2="172" y2="196" />
             </g>
           </svg>
-          <span className="text-[11px] font-medium text-zinc-400 select-none">Reddit Downloader</span>
+          <span className="text-[11px] font-medium text-zinc-400 select-none">GeorgeK Media Downloader</span>
         </div>
       </header>
 
       {/* ── Main content ──────────────────────────────────── */}
-      <main className="flex-1 flex flex-col px-5 pb-4 pt-3 gap-3 overflow-hidden">
+      <main className="flex-1 flex flex-col px-5 pb-0 pt-3 gap-3 overflow-hidden">
         {/* Input row */}
         <div className="flex gap-2 shrink-0">
           <input
@@ -149,7 +250,7 @@ export default function App() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="u/username or r/subreddit"
-            disabled={isDownloading}
+            disabled={isDownloading || isUpdating}
             spellCheck={false}
             className="flex-1 h-10 px-3.5 bg-zinc-800 border border-zinc-600/50 rounded-lg text-[13px] text-zinc-100 placeholder:text-zinc-400 focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/20 transition-all disabled:opacity-40 outline-none"
           />
@@ -157,7 +258,7 @@ export default function App() {
           {!isDownloading ? (
             <button
               onClick={handleStart}
-              disabled={!input.trim()}
+              disabled={!input.trim() || isUpdating}
               className="h-10 px-5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-[13px] font-medium rounded-lg transition-colors disabled:opacity-20 disabled:pointer-events-none flex items-center gap-1.5 shrink-0"
             >
               Start
@@ -232,7 +333,9 @@ export default function App() {
                         ? 'text-red-400'
                         : log.includes('Saved:')
                           ? 'text-emerald-400/80'
-                          : 'text-zinc-400 hover:text-zinc-200'
+                          : log.includes('Muxed')
+                            ? 'text-blue-400/80'
+                            : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
                     {log}
@@ -254,6 +357,25 @@ export default function App() {
                 >
                   <X className="w-4 h-4 text-zinc-400" />
                 </button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="text-[12px] text-zinc-300 shrink-0">Download</label>
+                <div className="flex gap-1">
+                  {(['both', 'photos', 'videos'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setSettings((s) => ({ ...s, mediaFilter: opt }))}
+                      className={`px-3 py-1.5 text-[11px] rounded-md transition-colors ${
+                        settings.mediaFilter === opt
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-zinc-700 text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      {opt === 'both' ? 'Both' : opt === 'photos' ? 'Photos' : 'Videos'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <label className="flex items-center gap-3 cursor-pointer">
@@ -283,7 +405,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Footer */}
+        {/* Stats row */}
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-5 text-[11px] text-zinc-400">
             <span>
@@ -314,6 +436,72 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* ── Footer bar ──────────────────────────────────── */}
+      <footer className="flex items-center h-8 px-4 shrink-0 bg-zinc-950/60 border-t border-zinc-700/40">
+        <div className="flex items-center gap-0 text-[11px]">
+          <span className="text-zinc-500">Version {appVersion || '--'}</span>
+          <span className="text-zinc-700 mx-2">|</span>
+          <button
+            onClick={handleCheckUpdates}
+            disabled={isUpdating}
+            className="text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-60"
+          >
+            {updateStatus || 'Check for Updates'}
+          </button>
+          <span className="text-zinc-700 mx-2">|</span>
+          <button
+            onClick={() => setShowAbout(true)}
+            className="text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            About
+          </button>
+        </div>
+      </footer>
+
+      {/* ── About overlay ───────────────────────────────── */}
+      {showAbout && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-zinc-800 border border-zinc-600/60 rounded-xl w-[420px] max-h-[360px] p-6 flex flex-col gap-4 shadow-2xl">
+            <h2 className="text-[16px] font-bold text-zinc-100">About GeorgeK Media Downloader</h2>
+            <div className="flex-1 overflow-y-auto space-y-3 text-[12px]">
+              <div>
+                <span className="text-zinc-300 font-semibold">Developer:</span>{' '}
+                <span className="text-zinc-400">George Karagioules</span>
+              </div>
+              <div>
+                <span className="text-zinc-300 font-semibold">Version:</span>{' '}
+                <span className="text-zinc-400">{appVersion || '--'}</span>
+              </div>
+              <div>
+                <span className="text-zinc-300 font-semibold">Year:</span>{' '}
+                <span className="text-zinc-400">2026</span>
+              </div>
+              <div className="pt-2 border-t border-zinc-700">
+                <span className="text-indigo-400 font-bold text-[11px]">Freeware License</span>
+                <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
+                  Copyright &copy; 2026 George Karagioules. All rights reserved.
+                </p>
+                <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
+                  This software is provided free of charge for personal and commercial use. You may download and use it at no cost.
+                </p>
+                <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
+                  You may NOT modify, reverse-engineer, redistribute, or sell this software or any portion of it without prior written permission from the author.
+                </p>
+                <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
+                  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. THE DEVELOPER IS NOT LIABLE FOR ANY DAMAGES ARISING FROM USE OF THIS SOFTWARE.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAbout(false)}
+              className="self-center px-6 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-medium rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

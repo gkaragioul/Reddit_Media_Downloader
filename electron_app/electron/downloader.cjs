@@ -1,6 +1,6 @@
 /**
- * Reddit media downloader engine — Node.js built-in modules only.
- * Ported from windows_reddit_downloader.py
+ * GKMD — GeorgeK Media Downloader engine.
+ * Node.js built-in modules only.
  */
 
 const https = require('https');
@@ -14,7 +14,7 @@ const os = require('os');
 
 // ── Constants ──────────────────────────────────────────────────
 
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) RedditDownloaderWin/3.1';
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) GKMD/4.0';
 const VALID_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.webm']);
 const VIDEO_EXT = new Set(['.mp4', '.webm']);
 const MAX_PAGES = 12;
@@ -64,15 +64,21 @@ function detectExt(url, defaultExt = '.bin') {
   }
 }
 
-function audioCandidateFromVideo(videoUrl) {
+function audioCandidatesFromVideo(videoUrl) {
   try {
     const parsed = new URL(videoUrl);
     const p = parsed.pathname;
-    if (!p.includes('DASH_')) return null;
     const base = p.substring(0, p.lastIndexOf('/'));
-    return `${parsed.protocol}//${parsed.host}${base}/DASH_AUDIO_128.mp4`;
+    const origin = `${parsed.protocol}//${parsed.host}${base}`;
+    // Reddit uses multiple audio URL patterns — try all of them
+    return [
+      `${origin}/DASH_AUDIO_128.mp4`,
+      `${origin}/DASH_audio.mp4`,
+      `${origin}/DASH_AUDIO_64.mp4`,
+      `${origin}/audio`,
+    ];
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -80,27 +86,54 @@ function getMediaEntries(postData) {
   const entries = [];
   const seen = new Set();
 
-  function add(url, kind, audioUrl) {
+  function add(url, kind, audioUrls) {
     if (!url || seen.has(url)) return;
     seen.add(url);
-    entries.push({ url, kind, audioUrl: audioUrl || null });
+    entries.push({ url, kind, audioUrls: audioUrls || [] });
   }
 
-  // 1. Direct URL
+  // Use crosspost parent data if available (crossposted videos store media there)
+  const effectivePost = (postData.crosspost_parent_list && postData.crosspost_parent_list.length > 0)
+    ? postData.crosspost_parent_list[0]
+    : postData;
+
+  // 1. Reddit-hosted video (check first — highest priority for v.redd.it links)
+  const redditVideo =
+    (effectivePost.secure_media?.reddit_video?.fallback_url) ||
+    (effectivePost.media?.reddit_video?.fallback_url) ||
+    (postData.secure_media?.reddit_video?.fallback_url) ||
+    (postData.media?.reddit_video?.fallback_url);
+  if (redditVideo) {
+    add(redditVideo, 'reddit_video', audioCandidatesFromVideo(redditVideo));
+  }
+
+  // 2. Reddit video preview (some posts only have this)
+  const previewVideo =
+    effectivePost.preview?.reddit_video_preview?.fallback_url ||
+    postData.preview?.reddit_video_preview?.fallback_url;
+  if (previewVideo) {
+    add(previewVideo, 'reddit_video', audioCandidateFromVideo(previewVideo));
+  }
+
+  // 3. Direct URL (skip v.redd.it links since they're handled above as reddit_video)
   const directUrl = postData.url_overridden_by_dest || postData.url;
   if (typeof directUrl === 'string') {
-    const ext = detectExt(directUrl, '');
-    if (ext) add(directUrl, VIDEO_EXT.has(ext) ? 'video' : 'photo');
+    // Skip v.redd.it — already handled by reddit_video extraction above
+    if (!directUrl.includes('v.redd.it')) {
+      const ext = detectExt(directUrl, '');
+      if (ext) add(directUrl, VIDEO_EXT.has(ext) ? 'video' : 'photo');
+    }
   }
 
-  // 2. Gallery
-  const gallery = postData.gallery_data;
-  const meta = postData.media_metadata;
+  // 4. Gallery
+  const gallery = postData.gallery_data || effectivePost.gallery_data;
+  const meta = postData.media_metadata || effectivePost.media_metadata;
   if (gallery && meta) {
     for (const item of (gallery.items || [])) {
       const media = meta[item.media_id] || {};
       const source = media.s || {};
-      const candidate = source.u || source.gif;
+      // mp4 for video galleries, u or gif for images
+      const candidate = source.mp4 || source.u || source.gif;
       if (candidate) {
         const cleaned = candidate.replace(/&amp;/g, '&');
         const ext = detectExt(cleaned, '.jpg');
@@ -109,11 +142,24 @@ function getMediaEntries(postData) {
     }
   }
 
-  // 3. Reddit video
-  const secureMedia = postData.secure_media || {};
-  const redditVideo = (secureMedia.reddit_video || {}).fallback_url;
-  if (redditVideo) {
-    add(redditVideo, 'reddit_video', audioCandidateFromVideo(redditVideo));
+  // 5. Embedded media (e.g., gfycat, redgifs) — extract from oembed or type-specific media
+  const embedMedia = effectivePost.secure_media || effectivePost.media || postData.secure_media || postData.media;
+  if (embedMedia && !embedMedia.reddit_video) {
+    // Some embeds have a direct video URL in type field
+    const oembed = embedMedia.oembed;
+    if (oembed && oembed.thumbnail_url) {
+      // For gfycat/redgifs, the thumbnail often has a pattern we can use
+      const thumbUrl = oembed.thumbnail_url;
+      if (thumbUrl.includes('redgifs.com') || thumbUrl.includes('gfycat.com')) {
+        // Try to extract a video URL from the thumbnail pattern
+        const videoUrl = thumbUrl.replace(/-size_restricted\.gif$/, '.mp4')
+                                  .replace(/\.jpg$/, '.mp4')
+                                  .replace(/-mobile\.(jpg|gif)$/, '.mp4');
+        if (videoUrl.endsWith('.mp4')) {
+          add(videoUrl, 'video');
+        }
+      }
+    }
   }
 
   return entries;
@@ -375,17 +421,26 @@ class RedditDownloader {
 
   // ── FFmpeg mux ────────────────────────────────────────────
 
-  async _tryMuxRedditVideo(videoPath, audioUrl) {
+  async _tryMuxRedditVideo(videoPath, audioUrls) {
     const ffmpeg = findFfmpeg();
-    if (!ffmpeg || !audioUrl) return videoPath;
+    if (!ffmpeg || !audioUrls || audioUrls.length === 0) return videoPath;
 
     const ext = path.extname(videoPath);
     const audioTmp = videoPath.replace(ext, '.audio.mp4');
     const mergedTmp = videoPath.replace(ext, '.merged.mp4');
 
     try {
-      const ok = await this._streamDownload(audioUrl, audioTmp);
-      if (!ok) return videoPath;
+      // Try each audio URL candidate until one succeeds
+      let audioDownloaded = false;
+      for (const audioUrl of audioUrls) {
+        if (this._cancelled) return videoPath;
+        const ok = await this._streamDownload(audioUrl, audioTmp);
+        if (ok && fs.existsSync(audioTmp) && fs.statSync(audioTmp).size > 0) {
+          audioDownloaded = true;
+          break;
+        }
+      }
+      if (!audioDownloaded) return videoPath;
 
       const success = await runFfmpeg([
         '-y', '-i', videoPath, '-i', audioTmp, '-c', 'copy', mergedTmp,
@@ -432,6 +487,7 @@ class RedditDownloader {
 
     const skipDuplicates = settings.skipDuplicates !== false;
     const requestDelay = Math.max(100, (settings.requestDelay || 0.5) * 1000);
+    const mediaFilter = settings.mediaFilter || 'both'; // 'both', 'photos', 'videos'
 
     let downloaded = 0;
     let skipped = 0;
@@ -451,6 +507,7 @@ class RedditDownloader {
 
       const ffmpeg = findFfmpeg();
       this._log(ffmpeg ? `FFmpeg found: ${path.basename(ffmpeg)}` : 'FFmpeg not found — videos will lack audio');
+      if (mediaFilter !== 'both') this._log(`Media filter: ${mediaFilter} only`);
 
       // Phase 2: Fetch posts with pagination
       const allMedia = [];
@@ -515,9 +572,27 @@ class RedditDownloader {
         if (this._cancelled) break;
 
         const { dateStr, postId, title, mediaIdx, entry } = allMedia[i];
-        const ext = detectExt(entry.url);
+        // For reddit_video entries, force .mp4 extension (fallback URLs have query params)
+        const isVideo = entry.kind === 'reddit_video' || entry.kind === 'video';
+        const ext = (entry.kind === 'reddit_video') ? '.mp4' : detectExt(entry.url);
+        const isVideoFile = isVideo || VIDEO_EXT.has(ext);
+
+        // Apply media filter
+        if (mediaFilter === 'photos' && isVideoFile) {
+          skipped++;
+          const progress = Math.round(((i + 1) / total) * 100);
+          this._sendProgress(downloaded, skipped, total, progress);
+          continue;
+        }
+        if (mediaFilter === 'videos' && !isVideoFile) {
+          skipped++;
+          const progress = Math.round(((i + 1) / total) * 100);
+          this._sendProgress(downloaded, skipped, total, progress);
+          continue;
+        }
+
         const filename = `${dateStr}_${postId}_${title}_${String(mediaIdx).padStart(3, '0')}${ext}`;
-        const outDir = VIDEO_EXT.has(ext) ? videosDir : photosDir;
+        const outDir = isVideoFile ? videosDir : photosDir;
         const outPath = path.join(outDir, filename);
 
         const progress = Math.round(((i + 1) / total) * 100);
@@ -542,7 +617,7 @@ class RedditDownloader {
 
         // Mux if reddit video
         if (entry.kind === 'reddit_video') {
-          await this._tryMuxRedditVideo(outPath, entry.audioUrl);
+          await this._tryMuxRedditVideo(outPath, entry.audioUrls);
         }
 
         // Duplicate hash check
