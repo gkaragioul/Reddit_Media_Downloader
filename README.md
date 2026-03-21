@@ -61,7 +61,7 @@ npm run dist
 
 ## Version
 
-**4.1.2** — Fix audio download 403 errors, Electron startup fix, full rebrand to GKMD
+**4.1.3** — New app logo (in-app, desktop shortcut, and installer)
 
 ## Author
 

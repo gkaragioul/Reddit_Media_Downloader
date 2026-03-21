@@ -234,12 +234,17 @@ export default function App() {
       >
         <div className="flex items-center gap-2.5">
           <svg width="13" height="13" viewBox="0 0 256 256" className="shrink-0">
-            <rect width="256" height="256" rx="56" fill="#6366f1" />
-            <g stroke="white" strokeWidth="26" strokeLinecap="round" strokeLinejoin="round" fill="none">
-              <line x1="128" y1="68" x2="128" y2="152" />
-              <polyline points="92,120 128,156 164,120" />
-              <line x1="84" y1="196" x2="172" y2="196" />
+            <rect width="256" height="256" rx="48" fill="#2d7f8e" />
+            {/* Download arrow */}
+            <g fill="white">
+              <rect x="104" y="44" width="48" height="80" />
+              <polygon points="60,124 128,192 196,124 160,124 160,124 96,124" />
+              <rect x="60" y="200" width="136" height="16" rx="4" />
             </g>
+            {/* Orange play triangle */}
+            <polygon points="112,108 112,156 148,132" fill="#e8833a" />
+            {/* Green dot */}
+            <circle cx="210" cy="194" r="10" fill="#4ade80" />
           </svg>
           <span className="text-[11px] font-medium text-zinc-400 select-none">GKMediaDownloader</span>
         </div>
