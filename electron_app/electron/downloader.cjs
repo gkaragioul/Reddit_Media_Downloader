@@ -150,21 +150,25 @@ function getMediaEntries(postData) {
     }
   }
 
-  // 5. Embedded media (e.g., gfycat, redgifs) — extract from oembed or type-specific media
-  const embedMedia = effectivePost.secure_media || effectivePost.media || postData.secure_media || postData.media;
-  if (embedMedia && !embedMedia.reddit_video) {
-    // Some embeds have a direct video URL in type field
-    const oembed = embedMedia.oembed;
-    if (oembed && oembed.thumbnail_url) {
-      // For gfycat/redgifs, the thumbnail often has a pattern we can use
-      const thumbUrl = oembed.thumbnail_url;
-      if (thumbUrl.includes('redgifs.com') || thumbUrl.includes('gfycat.com')) {
-        // Try to extract a video URL from the thumbnail pattern
-        const videoUrl = thumbUrl.replace(/-size_restricted\.gif$/, '.mp4')
-                                  .replace(/\.jpg$/, '.mp4')
-                                  .replace(/-mobile\.(jpg|gif)$/, '.mp4');
-        if (videoUrl.endsWith('.mp4')) {
-          add(videoUrl, 'video');
+  // 5. Embedded media (e.g., gfycat, redgifs) — only if no video found yet
+  //    (sections 1-2 already capture reddit_video_preview for embedded posts)
+  const hasVideo = entries.some(e => e.kind === 'reddit_video' || e.kind === 'video');
+  if (!hasVideo) {
+    const embedMedia = effectivePost.secure_media || effectivePost.media || postData.secure_media || postData.media;
+    if (embedMedia && !embedMedia.reddit_video) {
+      const oembed = embedMedia.oembed;
+      if (oembed && oembed.thumbnail_url) {
+        const thumbUrl = oembed.thumbnail_url;
+        if (thumbUrl.includes('redgifs.com') || thumbUrl.includes('gfycat.com')) {
+          // RedGIFs thumbnail pattern: ...-poster.jpg or ...-size_restricted.gif
+          // Actual video URL uses the slug with no suffix
+          const videoUrl = thumbUrl
+            .replace(/-poster\.jpg$/, '.mp4')
+            .replace(/-size_restricted\.gif$/, '.mp4')
+            .replace(/-mobile\.(jpg|gif)$/, '.mp4');
+          if (videoUrl !== thumbUrl && videoUrl.endsWith('.mp4')) {
+            add(videoUrl, 'video');
+          }
         }
       }
     }

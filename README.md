@@ -61,7 +61,7 @@ npm run dist
 
 ## Version
 
-**4.1.6** — Fix audio: download Reddit videos with audio via HLS stream
+**4.1.7** — Fix audio via HLS, fix duplicate 403 entries from embedded video posts
 
 ## Author
 
