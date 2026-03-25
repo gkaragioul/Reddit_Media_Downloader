@@ -14,7 +14,8 @@ A Windows desktop application that downloads public images and videos from Reddi
 - **Smart Organization**: Files organized into separate `Photos/` and `Videos/` folders
 - **Duplicate Detection**: Skip already-downloaded files using SHA256 content hashing
 - **Pause/Resume/Cancel**: Full control over downloads
-- **Reddit Video Muxing**: Automatic video+audio muxing with bundled ffmpeg
+- **RedGIFs Support**: Downloads full HD videos with audio from RedGIFs embeds via their API
+- **Reddit Video HLS**: Downloads Reddit-hosted videos with audio via HLS streams
 - **Crosspost Support**: Downloads media from crossposted content
 - **Auto-Updates**: Check for updates from GitHub releases
 - **About Dialog**: Version info and license details
@@ -59,9 +60,22 @@ npm run dist
     index.json
 ```
 
-## Version
+## Changelog
 
-**4.2.1** — Fix RedGIFs saving as .bin, add RedGIFs API support with audio
+**4.2.1**
+- Add RedGIFs API integration — downloads full HD videos with audio from RedGIFs embeds
+- Download Reddit-hosted videos via HLS streams for reliable video+audio
+- Fix 403 errors on audio downloads caused by Reddit's path-specific auth tokens
+- Remove duplicate/bogus media entries from embedded video posts
+- Fix file extension detection for RedGIFs downloads (was `.bin`, now `.mp4`)
+
+**4.1.3** — New app logo (in-app, desktop shortcut, and installer)
+
+**4.1.2** — Fix audio 403 errors by preserving query string auth tokens
+
+**4.1.1** — Fix audio download: add CMAF audio URL candidates
+
+**4.1.0** — Fix audioCandidatesFromVideo typo, add Logs export button
 
 ## Author
 
