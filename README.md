@@ -61,7 +61,7 @@ npm run dist
 
 ## Version
 
-**4.2.0** — Add RedGIFs API support for full video+audio, HLS for Reddit videos
+**4.2.1** — Fix RedGIFs saving as .bin, add RedGIFs API support with audio
 
 ## Author
 

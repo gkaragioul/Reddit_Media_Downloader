@@ -641,9 +641,9 @@ class RedditDownloader {
         if (this._cancelled) break;
 
         const { dateStr, postId, title, mediaIdx, entry } = allMedia[i];
-        // For reddit_video entries, force .mp4 extension (fallback URLs have query params)
-        const isVideo = entry.kind === 'reddit_video' || entry.kind === 'video';
-        const ext = (entry.kind === 'reddit_video') ? '.mp4' : detectExt(entry.url);
+        // Force .mp4 for reddit_video and redgifs entries (their URLs lack file extensions)
+        const isVideo = entry.kind === 'reddit_video' || entry.kind === 'video' || entry.kind === 'redgifs';
+        const ext = (entry.kind === 'reddit_video' || entry.kind === 'redgifs') ? '.mp4' : detectExt(entry.url);
         const isVideoFile = isVideo || VIDEO_EXT.has(ext);
 
         // Apply media filter
