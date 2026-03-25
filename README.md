@@ -61,7 +61,7 @@ npm run dist
 
 ## Version
 
-**4.1.3** — New app logo (in-app, desktop shortcut, and installer)
+**4.1.4** — Fix audio 403 errors by fetching DASH manifest for correct auth tokens
 
 ## Author
 

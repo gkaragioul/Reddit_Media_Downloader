@@ -85,14 +85,52 @@ function audioCandidatesFromVideo(videoUrl) {
   }
 }
 
+async function audioUrlsFromDashManifest(dashUrl) {
+  try {
+    const res = await httpGet(dashUrl, API_TIMEOUT);
+    if (res.statusCode !== 200) { res.resume(); return []; }
+    const xml = await new Promise((resolve, reject) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => resolve(data));
+      res.on('error', reject);
+    });
+    // Parse audio BaseURL entries from MPD XML
+    // Match <Representation> blocks with audio mimeType, then extract <BaseURL>
+    const audioUrls = [];
+    const parsed = new URL(dashUrl);
+    const basePath = parsed.pathname.substring(0, parsed.pathname.lastIndexOf('/'));
+    const baseOrigin = `${parsed.protocol}//${parsed.host}${basePath}`;
+    // Find all BaseURL values inside audio AdaptationSets
+    // Simple regex approach: find audio adaptation sets, then extract BaseURL values
+    const audioSetRegex = /<AdaptationSet[^>]*contentType="audio"[^>]*>([\s\S]*?)<\/AdaptationSet>/gi;
+    let setMatch;
+    while ((setMatch = audioSetRegex.exec(xml)) !== null) {
+      const baseUrlRegex = /<BaseURL[^>]*>([^<]+)<\/BaseURL>/gi;
+      let urlMatch;
+      while ((urlMatch = baseUrlRegex.exec(setMatch[1])) !== null) {
+        const relative = urlMatch[1].trim();
+        // Build full URL with auth tokens from dash_url
+        const fullUrl = relative.startsWith('http')
+          ? relative
+          : `${baseOrigin}/${relative}${parsed.search || ''}`;
+        audioUrls.push(fullUrl);
+      }
+    }
+    return audioUrls;
+  } catch {
+    return [];
+  }
+}
+
 function getMediaEntries(postData) {
   const entries = [];
   const seen = new Set();
 
-  function add(url, kind, audioUrls) {
+  function add(url, kind, audioUrls, dashUrl) {
     if (!url || seen.has(url)) return;
     seen.add(url);
-    entries.push({ url, kind, audioUrls: audioUrls || [] });
+    entries.push({ url, kind, audioUrls: audioUrls || [], dashUrl: dashUrl || null });
   }
 
   // Use crosspost parent data if available (crossposted videos store media there)
@@ -101,21 +139,25 @@ function getMediaEntries(postData) {
     : postData;
 
   // 1. Reddit-hosted video (check first — highest priority for v.redd.it links)
-  const redditVideo =
-    (effectivePost.secure_media?.reddit_video?.fallback_url) ||
-    (effectivePost.media?.reddit_video?.fallback_url) ||
-    (postData.secure_media?.reddit_video?.fallback_url) ||
-    (postData.media?.reddit_video?.fallback_url);
-  if (redditVideo) {
-    add(redditVideo, 'reddit_video', audioCandidatesFromVideo(redditVideo));
+  const redditVideoObj =
+    effectivePost.secure_media?.reddit_video ||
+    effectivePost.media?.reddit_video ||
+    postData.secure_media?.reddit_video ||
+    postData.media?.reddit_video;
+  if (redditVideoObj?.fallback_url) {
+    add(redditVideoObj.fallback_url, 'reddit_video',
+      audioCandidatesFromVideo(redditVideoObj.fallback_url),
+      redditVideoObj.dash_url || null);
   }
 
   // 2. Reddit video preview (some posts only have this)
-  const previewVideo =
-    effectivePost.preview?.reddit_video_preview?.fallback_url ||
-    postData.preview?.reddit_video_preview?.fallback_url;
-  if (previewVideo) {
-    add(previewVideo, 'reddit_video', audioCandidatesFromVideo(previewVideo));
+  const previewVideoObj =
+    effectivePost.preview?.reddit_video_preview ||
+    postData.preview?.reddit_video_preview;
+  if (previewVideoObj?.fallback_url) {
+    add(previewVideoObj.fallback_url, 'reddit_video',
+      audioCandidatesFromVideo(previewVideoObj.fallback_url),
+      previewVideoObj.dash_url || null);
   }
 
   // 3. Direct URL (skip v.redd.it links since they're handled above as reddit_video)
@@ -424,18 +466,29 @@ class RedditDownloader {
 
   // ── FFmpeg mux ────────────────────────────────────────────
 
-  async _tryMuxRedditVideo(videoPath, audioUrls) {
+  async _tryMuxRedditVideo(videoPath, audioUrls, dashUrl) {
     const ffmpeg = findFfmpeg();
-    if (!ffmpeg || !audioUrls || audioUrls.length === 0) return videoPath;
+    if (!ffmpeg) return videoPath;
 
     const ext = path.extname(videoPath);
     const audioTmp = videoPath.replace(ext, '.audio.mp4');
     const mergedTmp = videoPath.replace(ext, '.merged.mp4');
 
     try {
+      // Build combined audio URL list: DASH manifest URLs first (have correct auth tokens),
+      // then fall back to guessed candidates
+      let allAudioUrls = [];
+      if (dashUrl) {
+        const dashAudioUrls = await audioUrlsFromDashManifest(dashUrl);
+        allAudioUrls = allAudioUrls.concat(dashAudioUrls);
+      }
+      allAudioUrls = allAudioUrls.concat(audioUrls || []);
+
+      if (allAudioUrls.length === 0) return videoPath;
+
       // Try each audio URL candidate until one succeeds
       let audioDownloaded = false;
-      for (const audioUrl of audioUrls) {
+      for (const audioUrl of allAudioUrls) {
         if (this._cancelled) return videoPath;
         const ok = await this._streamDownload(audioUrl, audioTmp);
         if (ok && fs.existsSync(audioTmp) && fs.statSync(audioTmp).size > 0) {
@@ -620,7 +673,7 @@ class RedditDownloader {
 
         // Mux if reddit video
         if (entry.kind === 'reddit_video') {
-          await this._tryMuxRedditVideo(outPath, entry.audioUrls);
+          await this._tryMuxRedditVideo(outPath, entry.audioUrls, entry.dashUrl);
         }
 
         // Duplicate hash check
