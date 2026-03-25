@@ -280,7 +280,13 @@ function runFfmpeg(args) {
   const ffmpeg = findFfmpeg();
   if (!ffmpeg) return Promise.resolve(false);
   return new Promise((resolve) => {
-    execFile(ffmpeg, args, { timeout: 120_000 }, (err, _stdout, _stderr) => {
+    execFile(ffmpeg, args, { timeout: 120_000 }, (err, _stdout, stderr) => {
+      if (err && stderr) {
+        // Extract last meaningful line from ffmpeg stderr for diagnostics
+        const lines = stderr.trim().split(/\r?\n/).filter(l => l.trim());
+        const last = lines[lines.length - 1] || '';
+        err._ffmpegDetail = last;
+      }
       resolve(!err);
     });
   });
@@ -429,40 +435,25 @@ class RedditDownloader {
 
   // ── FFmpeg mux ────────────────────────────────────────────
 
-  async _tryMuxRedditVideo(videoPath, audioUrls, hlsUrl) {
+  async _tryMuxAudio(videoPath, audioUrls) {
     const ffmpeg = findFfmpeg();
-    if (!ffmpeg) return videoPath;
+    if (!ffmpeg || !audioUrls || audioUrls.length === 0) return videoPath;
 
     const ext = path.extname(videoPath);
     const audioTmp = videoPath.replace(ext, '.audio.mp4');
     const mergedTmp = videoPath.replace(ext, '.merged.mp4');
 
     try {
+      // Try each audio URL candidate until one succeeds
       let audioDownloaded = false;
-
-      // Strategy 1: Use ffmpeg to extract audio from HLS stream (most reliable —
-      // HLS URL has its own auth token that covers all streams in the playlist)
-      if (hlsUrl && !this._cancelled) {
-        const hlsOk = await runFfmpeg([
-          '-y', '-i', hlsUrl, '-vn', '-c:a', 'aac', '-b:a', '128k', audioTmp,
-        ]);
-        if (hlsOk && fs.existsSync(audioTmp) && fs.statSync(audioTmp).size > 0) {
+      for (const audioUrl of audioUrls) {
+        if (this._cancelled) return videoPath;
+        const ok = await this._streamDownload(audioUrl, audioTmp);
+        if (ok && fs.existsSync(audioTmp) && fs.statSync(audioTmp).size > 0) {
           audioDownloaded = true;
+          break;
         }
       }
-
-      // Strategy 2: Direct download of audio URL candidates (legacy fallback)
-      if (!audioDownloaded && audioUrls && audioUrls.length > 0) {
-        for (const audioUrl of audioUrls) {
-          if (this._cancelled) return videoPath;
-          const ok = await this._streamDownload(audioUrl, audioTmp);
-          if (ok && fs.existsSync(audioTmp) && fs.statSync(audioTmp).size > 0) {
-            audioDownloaded = true;
-            break;
-          }
-        }
-      }
-
       if (!audioDownloaded) return videoPath;
 
       const success = await runFfmpeg([
@@ -472,7 +463,7 @@ class RedditDownloader {
       if (success && fs.existsSync(mergedTmp) && fs.statSync(mergedTmp).size > 0) {
         try { fs.unlinkSync(videoPath); } catch {}
         fs.renameSync(mergedTmp, videoPath);
-        this._log(`Muxed audio+video: ${path.basename(videoPath)}`);
+        this._log(`Muxed audio: ${path.basename(videoPath)}`);
       }
     } catch (err) {
       this._log(`FFmpeg mux failed: ${err.message}`);
@@ -628,7 +619,35 @@ class RedditDownloader {
         }
 
         // Download
-        const ok = await this._streamDownload(entry.url, outPath);
+        let ok = false;
+
+        // For reddit videos: try HLS download first (gets video+audio in one shot)
+        if (entry.kind === 'reddit_video' && entry.hlsUrl && findFfmpeg()) {
+          ok = await runFfmpeg([
+            '-y',
+            '-user_agent', USER_AGENT,
+            '-i', entry.hlsUrl,
+            '-c', 'copy', outPath,
+          ]);
+          if (ok && fs.existsSync(outPath) && fs.statSync(outPath).size > 0) {
+            this._log(`HLS download: ${filename}`);
+          } else {
+            ok = false;
+            try { fs.unlinkSync(outPath); } catch {}
+          }
+        }
+
+        // Fallback: direct download from fallback/direct URL
+        if (!ok && !this._cancelled) {
+          ok = await this._streamDownload(entry.url, outPath);
+          if (this._cancelled) break;
+
+          if (ok && entry.kind === 'reddit_video') {
+            // Try to mux audio separately (legacy path)
+            await this._tryMuxAudio(outPath, entry.audioUrls);
+          }
+        }
+
         if (this._cancelled) break;
 
         if (!ok) {
@@ -636,11 +655,6 @@ class RedditDownloader {
           this._log(`Skipped: ${filename}`);
           this._sendProgress(downloaded, skipped, total, progress);
           continue;
-        }
-
-        // Mux if reddit video
-        if (entry.kind === 'reddit_video') {
-          await this._tryMuxRedditVideo(outPath, entry.audioUrls, entry.hlsUrl);
         }
 
         // Duplicate hash check

@@ -61,7 +61,7 @@ npm run dist
 
 ## Version
 
-**4.1.5** — Fix audio on Reddit videos via HLS stream extraction
+**4.1.6** — Fix audio: download Reddit videos with audio via HLS stream
 
 ## Author
 
