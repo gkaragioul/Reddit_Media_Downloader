@@ -61,7 +61,7 @@ npm run dist
 
 ## Version
 
-**4.1.7** — Fix audio via HLS, fix duplicate 403 entries from embedded video posts
+**4.2.0** — Add RedGIFs API support for full video+audio, HLS for Reddit videos
 
 ## Author
 

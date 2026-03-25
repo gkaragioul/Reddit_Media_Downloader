@@ -101,6 +101,12 @@ function getMediaEntries(postData) {
     ? postData.crosspost_parent_list[0]
     : postData;
 
+  // Check if post is a RedGIFs/gfycat embed
+  const postUrl = postData.url_overridden_by_dest || postData.url || '';
+  const isRedgifsEmbed = typeof postUrl === 'string' &&
+    (postUrl.includes('redgifs.com/watch/') || postUrl.includes('redgifs.com/ifr/'));
+  const redgifsSlug = isRedgifsEmbed ? extractRedgifsSlug(postUrl) : null;
+
   // 1. Reddit-hosted video (check first — highest priority for v.redd.it links)
   const redditVideoObj =
     effectivePost.secure_media?.reddit_video ||
@@ -113,23 +119,23 @@ function getMediaEntries(postData) {
       redditVideoObj.hls_url || null);
   }
 
-  // 2. Reddit video preview (some posts only have this)
-  const previewVideoObj =
-    effectivePost.preview?.reddit_video_preview ||
-    postData.preview?.reddit_video_preview;
-  if (previewVideoObj?.fallback_url) {
-    add(previewVideoObj.fallback_url, 'reddit_video',
-      audioCandidatesFromVideo(previewVideoObj.fallback_url),
-      previewVideoObj.hls_url || null);
+  // 2. Reddit video preview — skip for RedGIFs embeds (preview has no real audio)
+  if (!redgifsSlug) {
+    const previewVideoObj =
+      effectivePost.preview?.reddit_video_preview ||
+      postData.preview?.reddit_video_preview;
+    if (previewVideoObj?.fallback_url) {
+      add(previewVideoObj.fallback_url, 'reddit_video',
+        audioCandidatesFromVideo(previewVideoObj.fallback_url),
+        previewVideoObj.hls_url || null);
+    }
   }
 
-  // 3. Direct URL (skip v.redd.it links since they're handled above as reddit_video)
-  const directUrl = postData.url_overridden_by_dest || postData.url;
-  if (typeof directUrl === 'string') {
-    // Skip v.redd.it — already handled by reddit_video extraction above
-    if (!directUrl.includes('v.redd.it')) {
-      const ext = detectExt(directUrl, '');
-      if (ext) add(directUrl, VIDEO_EXT.has(ext) ? 'video' : 'photo');
+  // 3. Direct URL (skip v.redd.it and redgifs.com — handled separately)
+  if (typeof postUrl === 'string') {
+    if (!postUrl.includes('v.redd.it') && !postUrl.includes('redgifs.com')) {
+      const ext = detectExt(postUrl, '');
+      if (ext) add(postUrl, VIDEO_EXT.has(ext) ? 'video' : 'photo');
     }
   }
 
@@ -140,7 +146,6 @@ function getMediaEntries(postData) {
     for (const item of (gallery.items || [])) {
       const media = meta[item.media_id] || {};
       const source = media.s || {};
-      // mp4 for video galleries, u or gif for images
       const candidate = source.mp4 || source.u || source.gif;
       if (candidate) {
         const cleaned = candidate.replace(/&amp;/g, '&');
@@ -150,28 +155,9 @@ function getMediaEntries(postData) {
     }
   }
 
-  // 5. Embedded media (e.g., gfycat, redgifs) — only if no video found yet
-  //    (sections 1-2 already capture reddit_video_preview for embedded posts)
-  const hasVideo = entries.some(e => e.kind === 'reddit_video' || e.kind === 'video');
-  if (!hasVideo) {
-    const embedMedia = effectivePost.secure_media || effectivePost.media || postData.secure_media || postData.media;
-    if (embedMedia && !embedMedia.reddit_video) {
-      const oembed = embedMedia.oembed;
-      if (oembed && oembed.thumbnail_url) {
-        const thumbUrl = oembed.thumbnail_url;
-        if (thumbUrl.includes('redgifs.com') || thumbUrl.includes('gfycat.com')) {
-          // RedGIFs thumbnail pattern: ...-poster.jpg or ...-size_restricted.gif
-          // Actual video URL uses the slug with no suffix
-          const videoUrl = thumbUrl
-            .replace(/-poster\.jpg$/, '.mp4')
-            .replace(/-size_restricted\.gif$/, '.mp4')
-            .replace(/-mobile\.(jpg|gif)$/, '.mp4');
-          if (videoUrl !== thumbUrl && videoUrl.endsWith('.mp4')) {
-            add(videoUrl, 'video');
-          }
-        }
-      }
-    }
+  // 5. RedGIFs — use API to get actual video URL (resolved at download time)
+  if (redgifsSlug && entries.length === 0) {
+    add(postUrl, 'redgifs');
   }
 
   return entries;
@@ -196,15 +182,80 @@ function nowStamp() {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
+// ── RedGIFs helpers ───────────────────────────────────────────
+
+let _redgifsToken = null;
+let _redgifsTokenExpiry = 0;
+
+async function getRedgifsToken() {
+  if (_redgifsToken && Date.now() < _redgifsTokenExpiry) return _redgifsToken;
+  try {
+    const res = await httpGet('https://api.redgifs.com/v2/auth/temporary', API_TIMEOUT);
+    if (res.statusCode !== 200) { res.resume(); return null; }
+    const json = await new Promise((resolve, reject) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { reject(); } });
+      res.on('error', reject);
+    });
+    _redgifsToken = json.token || null;
+    // Token lasts ~24h, refresh after 12h
+    _redgifsTokenExpiry = Date.now() + 12 * 60 * 60 * 1000;
+    return _redgifsToken;
+  } catch {
+    return null;
+  }
+}
+
+function extractRedgifsSlug(url) {
+  // https://www.redgifs.com/watch/exemplaryshowythunderbird → exemplaryshowythunderbird
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    if (parts.length >= 2 && parts[0] === 'watch') return parts[1].toLowerCase();
+    if (parts.length >= 2 && parts[0] === 'ifr') return parts[1].toLowerCase();
+  } catch {}
+  return null;
+}
+
+async function getRedgifsVideoUrl(slug) {
+  const token = await getRedgifsToken();
+  if (!token) return null;
+  try {
+    const url = `https://api.redgifs.com/v2/gifs/${slug}`;
+    const res = await new Promise((resolve, reject) => {
+      const parsed = new URL(url);
+      const req = https.get(url, {
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Authorization': `Bearer ${token}`,
+        },
+        timeout: API_TIMEOUT,
+      }, resolve);
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    });
+    if (res.statusCode !== 200) { res.resume(); return null; }
+    const json = await new Promise((resolve, reject) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { reject(); } });
+      res.on('error', reject);
+    });
+    return json.gif?.urls?.hd || json.gif?.urls?.sd || null;
+  } catch {
+    return null;
+  }
+}
+
 // ── HTTP utilities (built-in only) ─────────────────────────────
 
-function httpGet(urlStr, timeout, hops = 0) {
+function httpGet(urlStr, timeout, hops = 0, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     if (hops > MAX_REDIRECTS) return reject(new Error('Too many redirects'));
     const parsed = new URL(urlStr);
     const mod = parsed.protocol === 'https:' ? https : http;
     const req = mod.get(urlStr, {
-      headers: { 'User-Agent': USER_AGENT },
+      headers: { 'User-Agent': USER_AGENT, ...extraHeaders },
       timeout,
     }, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 303 || res.statusCode === 307) {
@@ -212,7 +263,7 @@ function httpGet(urlStr, timeout, hops = 0) {
         res.resume();
         if (!location) return reject(new Error('Redirect with no location'));
         const next = location.startsWith('http') ? location : new URL(location, urlStr).href;
-        return httpGet(next, timeout, hops + 1).then(resolve, reject);
+        return httpGet(next, timeout, hops + 1, extraHeaders).then(resolve, reject);
       }
       resolve(res);
     });
@@ -382,7 +433,7 @@ class RedditDownloader {
 
   // ── Streaming download ────────────────────────────────────
 
-  async _streamDownload(url, destPath) {
+  async _streamDownload(url, destPath, extraHeaders = {}) {
     if (this._cancelled) return false;
     await this._waitIfPaused();
     if (this._cancelled) return false;
@@ -390,7 +441,7 @@ class RedditDownloader {
     return new Promise(async (resolve) => {
       let res;
       try {
-        res = await httpGet(url, DOWNLOAD_TIMEOUT);
+        res = await httpGet(url, DOWNLOAD_TIMEOUT, 0, extraHeaders);
       } catch (err) {
         this._log(`Download failed: ${err.message}`);
         return resolve(false);
@@ -625,8 +676,19 @@ class RedditDownloader {
         // Download
         let ok = false;
 
-        // For reddit videos: try HLS download first (gets video+audio in one shot)
-        if (entry.kind === 'reddit_video' && entry.hlsUrl && findFfmpeg()) {
+        if (entry.kind === 'redgifs') {
+          // RedGIFs: resolve actual video URL via API, download with auth
+          const slug = extractRedgifsSlug(entry.url);
+          if (slug) {
+            const videoUrl = await getRedgifsVideoUrl(slug);
+            if (videoUrl && !this._cancelled) {
+              const token = await getRedgifsToken();
+              const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+              ok = await this._streamDownload(videoUrl, outPath, headers);
+            }
+          }
+        } else if (entry.kind === 'reddit_video' && entry.hlsUrl && findFfmpeg()) {
+          // Reddit videos: try HLS download first (gets video+audio in one shot)
           ok = await runFfmpeg([
             '-y',
             '-user_agent', USER_AGENT,
@@ -642,7 +704,7 @@ class RedditDownloader {
         }
 
         // Fallback: direct download from fallback/direct URL
-        if (!ok && !this._cancelled) {
+        if (!ok && !this._cancelled && entry.kind !== 'redgifs') {
           ok = await this._streamDownload(entry.url, outPath);
           if (this._cancelled) break;
 
