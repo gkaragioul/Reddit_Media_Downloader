@@ -85,52 +85,15 @@ function audioCandidatesFromVideo(videoUrl) {
   }
 }
 
-async function audioUrlsFromDashManifest(dashUrl) {
-  try {
-    const res = await httpGet(dashUrl, API_TIMEOUT);
-    if (res.statusCode !== 200) { res.resume(); return []; }
-    const xml = await new Promise((resolve, reject) => {
-      let data = '';
-      res.on('data', (chunk) => (data += chunk));
-      res.on('end', () => resolve(data));
-      res.on('error', reject);
-    });
-    // Parse audio BaseURL entries from MPD XML
-    // Match <Representation> blocks with audio mimeType, then extract <BaseURL>
-    const audioUrls = [];
-    const parsed = new URL(dashUrl);
-    const basePath = parsed.pathname.substring(0, parsed.pathname.lastIndexOf('/'));
-    const baseOrigin = `${parsed.protocol}//${parsed.host}${basePath}`;
-    // Find all BaseURL values inside audio AdaptationSets
-    // Simple regex approach: find audio adaptation sets, then extract BaseURL values
-    const audioSetRegex = /<AdaptationSet[^>]*contentType="audio"[^>]*>([\s\S]*?)<\/AdaptationSet>/gi;
-    let setMatch;
-    while ((setMatch = audioSetRegex.exec(xml)) !== null) {
-      const baseUrlRegex = /<BaseURL[^>]*>([^<]+)<\/BaseURL>/gi;
-      let urlMatch;
-      while ((urlMatch = baseUrlRegex.exec(setMatch[1])) !== null) {
-        const relative = urlMatch[1].trim();
-        // Build full URL with auth tokens from dash_url
-        const fullUrl = relative.startsWith('http')
-          ? relative
-          : `${baseOrigin}/${relative}${parsed.search || ''}`;
-        audioUrls.push(fullUrl);
-      }
-    }
-    return audioUrls;
-  } catch {
-    return [];
-  }
-}
 
 function getMediaEntries(postData) {
   const entries = [];
   const seen = new Set();
 
-  function add(url, kind, audioUrls, dashUrl) {
+  function add(url, kind, audioUrls, hlsUrl) {
     if (!url || seen.has(url)) return;
     seen.add(url);
-    entries.push({ url, kind, audioUrls: audioUrls || [], dashUrl: dashUrl || null });
+    entries.push({ url, kind, audioUrls: audioUrls || [], hlsUrl: hlsUrl || null });
   }
 
   // Use crosspost parent data if available (crossposted videos store media there)
@@ -147,7 +110,7 @@ function getMediaEntries(postData) {
   if (redditVideoObj?.fallback_url) {
     add(redditVideoObj.fallback_url, 'reddit_video',
       audioCandidatesFromVideo(redditVideoObj.fallback_url),
-      redditVideoObj.dash_url || null);
+      redditVideoObj.hls_url || null);
   }
 
   // 2. Reddit video preview (some posts only have this)
@@ -157,7 +120,7 @@ function getMediaEntries(postData) {
   if (previewVideoObj?.fallback_url) {
     add(previewVideoObj.fallback_url, 'reddit_video',
       audioCandidatesFromVideo(previewVideoObj.fallback_url),
-      previewVideoObj.dash_url || null);
+      previewVideoObj.hls_url || null);
   }
 
   // 3. Direct URL (skip v.redd.it links since they're handled above as reddit_video)
@@ -466,7 +429,7 @@ class RedditDownloader {
 
   // ── FFmpeg mux ────────────────────────────────────────────
 
-  async _tryMuxRedditVideo(videoPath, audioUrls, dashUrl) {
+  async _tryMuxRedditVideo(videoPath, audioUrls, hlsUrl) {
     const ffmpeg = findFfmpeg();
     if (!ffmpeg) return videoPath;
 
@@ -475,27 +438,31 @@ class RedditDownloader {
     const mergedTmp = videoPath.replace(ext, '.merged.mp4');
 
     try {
-      // Build combined audio URL list: DASH manifest URLs first (have correct auth tokens),
-      // then fall back to guessed candidates
-      let allAudioUrls = [];
-      if (dashUrl) {
-        const dashAudioUrls = await audioUrlsFromDashManifest(dashUrl);
-        allAudioUrls = allAudioUrls.concat(dashAudioUrls);
-      }
-      allAudioUrls = allAudioUrls.concat(audioUrls || []);
-
-      if (allAudioUrls.length === 0) return videoPath;
-
-      // Try each audio URL candidate until one succeeds
       let audioDownloaded = false;
-      for (const audioUrl of allAudioUrls) {
-        if (this._cancelled) return videoPath;
-        const ok = await this._streamDownload(audioUrl, audioTmp);
-        if (ok && fs.existsSync(audioTmp) && fs.statSync(audioTmp).size > 0) {
+
+      // Strategy 1: Use ffmpeg to extract audio from HLS stream (most reliable —
+      // HLS URL has its own auth token that covers all streams in the playlist)
+      if (hlsUrl && !this._cancelled) {
+        const hlsOk = await runFfmpeg([
+          '-y', '-i', hlsUrl, '-vn', '-c:a', 'aac', '-b:a', '128k', audioTmp,
+        ]);
+        if (hlsOk && fs.existsSync(audioTmp) && fs.statSync(audioTmp).size > 0) {
           audioDownloaded = true;
-          break;
         }
       }
+
+      // Strategy 2: Direct download of audio URL candidates (legacy fallback)
+      if (!audioDownloaded && audioUrls && audioUrls.length > 0) {
+        for (const audioUrl of audioUrls) {
+          if (this._cancelled) return videoPath;
+          const ok = await this._streamDownload(audioUrl, audioTmp);
+          if (ok && fs.existsSync(audioTmp) && fs.statSync(audioTmp).size > 0) {
+            audioDownloaded = true;
+            break;
+          }
+        }
+      }
+
       if (!audioDownloaded) return videoPath;
 
       const success = await runFfmpeg([
@@ -673,7 +640,7 @@ class RedditDownloader {
 
         // Mux if reddit video
         if (entry.kind === 'reddit_video') {
-          await this._tryMuxRedditVideo(outPath, entry.audioUrls, entry.dashUrl);
+          await this._tryMuxRedditVideo(outPath, entry.audioUrls, entry.hlsUrl);
         }
 
         // Duplicate hash check

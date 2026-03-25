@@ -61,7 +61,7 @@ npm run dist
 
 ## Version
 
-**4.1.4** — Fix audio 403 errors by fetching DASH manifest for correct auth tokens
+**4.1.5** — Fix audio on Reddit videos via HLS stream extraction
 
 ## Author
 
