@@ -5,13 +5,9 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const RedditDownloader = require('./downloader.cjs');
+const { GITHUB_API_URL } = require('./updateConfig.cjs');
 
 let downloader = null;
-
-// ── Update constants ────────────────────────────────────────
-const REPO_OWNER = 'karagioules';
-const REPO_NAME = 'GKMediaDownloader';
-const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
 
 // AppData dir for update state persistence
 const APP_DATA_DIR = path.join(app.getPath('userData'));

@@ -32,7 +32,15 @@ interface UpdateInfo {
   releaseNotes: string;
   fileName: string;
   expectedSha256?: string | null;
+  error?: never;
 }
+
+interface UpdateCheckError {
+  error: string;
+  version?: never;
+}
+
+type UpdateCheckResult = UpdateInfo | UpdateCheckError | null;
 
 declare global {
   interface Window {
@@ -42,7 +50,7 @@ declare global {
       stopDownload: () => void;
       openOutputFolder: () => void;
       saveLogs: (logLines: string[]) => Promise<{ success: boolean; filePath?: string; message?: string }>;
-      checkForUpdates: (isAuto?: boolean) => Promise<UpdateInfo | null>;
+      checkForUpdates: (isAuto?: boolean) => Promise<UpdateCheckResult>;
       dismissUpdate: (version: string) => Promise<void>;
       downloadUpdate: (url: string, fileName: string, expectedSha256?: string | null) => Promise<{ success: boolean; message?: string; filePath?: string }>;
       installUpdate: (filePath: string, version: string) => void;
