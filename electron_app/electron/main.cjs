@@ -10,7 +10,7 @@ let downloader = null;
 
 // ── Update constants ────────────────────────────────────────
 const REPO_OWNER = 'karagioules';
-const REPO_NAME = 'GKMediaDownloader_Releases';
+const REPO_NAME = 'GKMediaDownloader';
 const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
 
 // AppData dir for update state persistence

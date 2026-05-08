@@ -31,9 +31,9 @@ npm run dist            # Build NSIS installer .exe
 
 ## Version & Updates
 - Version is set in `electron_app/package.json` → `"version"` field
-- Update system checks GitHub releases at `karagioules/GKMediaDownloader_Releases`
+- Update system checks GitHub releases at `karagioules/GKMediaDownloader`
 - Update flow (matches MyLocalBackup pattern):
-  1. Check `api.github.com/repos/karagioules/GKMediaDownloader_Releases/releases/latest`
+  1. Check `api.github.com/repos/karagioules/GKMediaDownloader/releases/latest`
   2. Compare tag version with current app version
   3. Prompt user with release notes
   4. Download installer to temp (with SHA256 verification if hash in release notes)
@@ -44,7 +44,7 @@ npm run dist            # Build NSIS installer .exe
 - Version displayed in footer bar (bottom-left)
 
 ## GitHub
-- Releases repo: `https://github.com/karagioules/GKMediaDownloader_Releases` (public, for auto-updates)
+- Repo: `https://github.com/karagioules/GKMediaDownloader`
 - Releases should contain the NSIS `.exe` installer with SHA256 hash in release notes body
 - SHA256 format in release notes: `SHA256: <64-char hex>`
 

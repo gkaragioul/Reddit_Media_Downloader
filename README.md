@@ -1,8 +1,3 @@
-
-
-https://github.com/user-attachments/assets/2f4fc5fd-e108-493a-8b91-03e841baa88d
-
-
 <h1 align="center">GKMediaDownloader</h1>
 
 <p align="center">
