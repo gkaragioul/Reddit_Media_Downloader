@@ -1,7 +1,7 @@
 {
   "name": "gkmd",
   "private": true,
-  "version": "4.2.5",
+  "version": "4.2.6",
   "description": "Reddit Media Downloader - Download media from Reddit profiles and subreddits",
   "author": "George Karagioules",
   "license": "GPL-3.0-or-later",
