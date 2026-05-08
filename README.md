@@ -2,7 +2,7 @@
   <img src="electron_app/assets/icon.png" alt="GKMediaDownloader logo" width="112">
 </p>
 
-<h1 align="center">GKMediaDownloader</h1>
+<h1 align="center">Reddit Media Downloader</h1>
 
 <p align="center">
   <strong>Windows desktop app for downloading public Reddit photos and videos.</strong><br>
