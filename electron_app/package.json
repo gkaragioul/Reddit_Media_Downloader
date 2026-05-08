@@ -40,7 +40,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "GKMediaDownloader",
       "runAfterFinish": false,
-      "artifactName": "GKMediaDownloader-Setup.${ext}"
+      "artifactName": "Reddit-Media-Downloader-Setup.${ext}"
     },
     "files": [
       "dist/**/*",
