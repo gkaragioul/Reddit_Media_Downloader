@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/karagioules/Reddit_Media_Downloader/releases/latest">Download</a> -
+  <a href="https://github.com/karagioules/GKMediaDownloader_Releases/releases/latest">Download</a> -
   <a href="#features">Features</a> -
   <a href="#auto-update-system">Auto-Updates</a> -
   <a href="#build-from-source">Build</a> -
@@ -36,7 +36,7 @@
 
 ## Download
 
-Grab the latest installer from [Releases](https://github.com/karagioules/Reddit_Media_Downloader/releases/latest).
+Grab the latest installer from [Releases](https://github.com/karagioules/GKMediaDownloader_Releases/releases/latest).
 
 ## Build From Source
 
@@ -90,9 +90,13 @@ The app checks GitHub Releases on launch:
 
 ## Changelog
 
+**4.2.3**
+- Move auto-updates and download links to the public `GKMediaDownloader_Releases` channel
+- Remove old repository naming from the README release path
+
 **4.2.2**
 - Add root `LICENSE`, bundled third-party notices, and installer-shipped license files
-- Point auto-updates at `karagioules/Reddit_Media_Downloader` GitHub Releases
+- Point auto-updates at GitHub Releases
 - Refresh README header, release links, and contribution policy
 
 **4.2.1**

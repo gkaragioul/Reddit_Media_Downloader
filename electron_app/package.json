@@ -1,7 +1,7 @@
 {
   "name": "gkmd",
   "private": true,
-  "version": "4.2.2",
+  "version": "4.2.3",
   "description": "GeorgeK Media Downloader - Download media from Reddit profiles and subreddits",
   "author": "George Karagioules",
   "type": "module",

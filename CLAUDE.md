@@ -1,7 +1,7 @@
 # GKMediaDownloader
 
 ## Project Overview
-Desktop app (Electron + React + TypeScript) that downloads media (photos & videos) from Reddit user profiles and subreddits. Previously called "Reddit Downloader", now rebranded to **GKMediaDownloader**.
+Desktop app (Electron + React + TypeScript) that downloads media (photos & videos) from Reddit user profiles and subreddits. Product name: **GKMediaDownloader**.
 
 ## Architecture
 - **Frontend**: React + TypeScript + Tailwind CSS + Lucide icons (in `electron_app/src/`)
@@ -31,9 +31,9 @@ npm run dist            # Build NSIS installer .exe
 
 ## Version & Updates
 - Version is set in `electron_app/package.json` → `"version"` field
-- Update system checks GitHub releases at `karagioules/Reddit_Media_Downloader`
+- Update system checks GitHub releases at `karagioules/GKMediaDownloader_Releases`
 - Update flow (matches MyLocalBackup pattern):
-  1. Check `api.github.com/repos/karagioules/Reddit_Media_Downloader/releases/latest`
+  1. Check `api.github.com/repos/karagioules/GKMediaDownloader_Releases/releases/latest`
   2. Compare tag version with current app version
   3. Prompt user with release notes
   4. Download installer to temp (with SHA256 verification if hash in release notes)
@@ -44,7 +44,7 @@ npm run dist            # Build NSIS installer .exe
 - Version displayed in footer bar (bottom-left)
 
 ## GitHub
-- Source/release repo: `https://github.com/karagioules/Reddit_Media_Downloader`
+- Releases repo: `https://github.com/karagioules/GKMediaDownloader_Releases` (public, for auto-updates)
 - Releases should contain the NSIS `.exe` installer with SHA256 hash in release notes body
 - SHA256 format in release notes: `SHA256: <64-char hex>`
 
