@@ -2,17 +2,16 @@
   <img src="electron_app/assets/icon.png" alt="GKMediaDownloader logo" width="112">
 </p>
 
-<h1 align="center">Reddit Media Downloader</h1>
+<h1 align="center">GKMediaDownloader</h1>
 
 <p align="center">
   <strong>Windows desktop app for downloading public Reddit photos and videos.</strong><br>
-  Electron, React, TypeScript, Tailwind CSS, RedGIFs support, Reddit HLS video, and SHA256-verified updates.
+  Built with Electron, React, TypeScript, and Tailwind CSS.
 </p>
 
 <p align="center">
-  <a href="https://github.com/karagioules/GKMediaDownloader_Releases/releases/latest">Download</a> -
   <a href="#features">Features</a> -
-  <a href="#auto-update-system">Auto-Updates</a> -
+  <a href="#usage">Usage</a> -
   <a href="#build-from-source">Build</a> -
   <a href="#license">License</a>
 </p>
@@ -21,22 +20,47 @@
 ![Electron](https://img.shields.io/badge/Electron-40+-47848F.svg)
 ![License](https://img.shields.io/badge/License-Freeware-red.svg)
 
+## Overview
+
+GKMediaDownloader downloads public images and videos from Reddit user profiles and subreddits. It is designed for simple batch downloading, organized output folders, duplicate detection, and reliable handling of common Reddit-hosted and embedded media formats.
+
+This app is not affiliated with Reddit, Inc. or RedGIFs.
+
 ## Features
 
 - **Multiple input formats**: Enter a username, `u/username`, `r/subreddit`, or full Reddit URL
 - **Photo and video downloads**: Extracts images, videos, GIFs, and crosspost media
-- **RedGIFs support**: Downloads full HD videos with audio from RedGIFs embeds
-- **Reddit video HLS**: Downloads Reddit-hosted videos with reliable video and audio muxing
+- **RedGIFs support**: Downloads RedGIFs media embedded in Reddit posts
+- **Reddit video support**: Handles Reddit-hosted video streams with audio muxing
 - **Media type filter**: Choose videos only, photos only, or both
 - **Smart organization**: Saves into separate `Photos/` and `Videos/` folders
 - **Duplicate detection**: Skips already-downloaded files using SHA256 content hashing
 - **Pause, resume, and cancel**: Keeps long downloads controllable
-- **Automatic updates**: Checks GitHub Releases and verifies installer hashes when release notes include `SHA256: <hash>`
-- **About dialog**: Shows version and licensing details
+- **About dialog**: Shows product, version, and licensing details
 
-## Download
+## Usage
 
-Grab the latest installer from [Releases](https://github.com/karagioules/GKMediaDownloader_Releases/releases/latest).
+1. Launch GKMediaDownloader.
+2. Enter a Reddit username, profile URL, or subreddit:
+   - `username`
+   - `u/username`
+   - `r/subreddit`
+   - `https://www.reddit.com/user/username/`
+3. Choose the media filter in Settings.
+4. Click **Start**.
+5. Files are saved to `~/Downloads/<username or subreddit>/`.
+
+## Output Structure
+
+```text
+~/Downloads/
+  username/
+    Photos/
+      20260120_abc123_post-title_001.jpg
+    Videos/
+      20260118_ghi789_video-post_001.mp4
+    index.json
+```
 
 ## Build From Source
 
@@ -51,73 +75,12 @@ Create the Windows installer:
 ```bash
 cd electron_app
 npm run dist
-# Output: electron_app/dist-electron/GKMediaDownloader-Setup.exe
 ```
-
-## Usage
-
-1. Launch GKMediaDownloader.
-2. Enter a Reddit username, profile URL, or subreddit:
-   - `username`
-   - `u/username`
-   - `r/subreddit`
-   - `https://www.reddit.com/user/username/`
-3. Choose the media filter in Settings.
-4. Click **Start**.
-5. Files are saved to `~/Downloads/<username or subreddit>/`.
-
-## Auto-Update System
-
-The app checks GitHub Releases on launch:
-
-- Compares the latest release tag with the current app version
-- Prompts with release notes before downloading
-- Downloads the `.exe` installer from the release assets
-- Verifies download integrity when release notes include `SHA256: <64-char hex>`
-- Installs through the Windows installer and tracks failed update attempts
-
-## Output Structure
-
-```text
-~/Downloads/
-  username/
-    Photos/
-      20260120_abc123_post-title_001.jpg
-    Videos/
-      20260118_ghi789_video-post_001.mp4
-    index.json
-```
-
-## Changelog
-
-**4.2.3**
-- Move auto-updates and download links to the public `GKMediaDownloader_Releases` channel
-- Remove old repository naming from the README release path
-
-**4.2.2**
-- Add root `LICENSE`, bundled third-party notices, and installer-shipped license files
-- Point auto-updates at GitHub Releases
-- Refresh README header, release links, and contribution policy
-
-**4.2.1**
-- Add RedGIFs API integration for full HD videos with audio
-- Download Reddit-hosted videos via HLS streams for reliable video and audio
-- Fix 403 errors on audio downloads caused by Reddit path-specific auth tokens
-- Remove duplicate and bogus media entries from embedded video posts
-- Fix file extension detection for RedGIFs downloads
-
-**4.1.3** - New app logo in-app, desktop shortcut, and installer
-
-**4.1.2** - Fix audio 403 errors by preserving query string auth tokens
-
-**4.1.1** - Fix audio download by adding CMAF audio URL candidates
-
-**4.1.0** - Fix audioCandidatesFromVideo typo and add Logs export button
 
 ## License
 
 GKMediaDownloader is proprietary freeware. It is free to use for personal and commercial use, but modification, redistribution, resale, and sublicensing require prior written permission from George Karagioules.
 
-See [LICENSE](LICENSE) for the EULA and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled third-party notices. The app is not affiliated with Reddit, Inc. or RedGIFs.
+See [LICENSE](LICENSE) for the EULA and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled third-party notices.
 
 For licensing inquiries, see the Contact section of https://github.com/gkaragioul.
