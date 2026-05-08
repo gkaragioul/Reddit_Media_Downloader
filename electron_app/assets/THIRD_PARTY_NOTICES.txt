@@ -1,0 +1,68 @@
+GKMediaDownloader - Third-Party Notices
+=======================================
+
+This software incorporates components from the projects listed below. The
+original copyright notices and licenses under which the author received such
+components are set forth here. The restrictions in the GKMediaDownloader
+freeware EULA apply only to the original portions of the Software authored by
+George Karagioules; the components below retain their own licenses.
+
+Last updated: 2026-05-08.
+
+----------------------------------------------------------------------------
+1. Electron, Chromium, and Node.js
+   Licenses: MIT, BSD-3-Clause, BSD-style, and other permissive licenses
+   Projects:
+     https://www.electronjs.org/
+     https://www.chromium.org/
+     https://nodejs.org/
+
+   The Windows desktop shell is built with Electron, which bundles Chromium
+   and Node.js. Electron Builder includes the Electron/Chromium license files
+   in packaged builds. Those license notices must remain with binary
+   distributions.
+
+----------------------------------------------------------------------------
+2. React and React DOM
+   License: MIT
+   Copyright (c) Meta Platforms, Inc. and affiliates.
+   Project: https://react.dev/
+
+   React and React DOM are used for the application user interface.
+
+----------------------------------------------------------------------------
+3. lucide-react
+   License: ISC
+   Copyright (c) Lucide Contributors
+   Project: https://github.com/lucide-icons/lucide
+
+   lucide-react provides icons used in the application interface.
+
+----------------------------------------------------------------------------
+4. ffmpeg-static and FFmpeg
+   License: ffmpeg-static package under GPL-compatible package terms; bundled
+   FFmpeg binary license depends on the distributed FFmpeg build.
+   Projects:
+     https://github.com/eugeneware/ffmpeg-static
+     https://ffmpeg.org/
+
+   GKMediaDownloader uses ffmpeg-static to locate a bundled FFmpeg executable
+   for muxing and processing media. Before publishing binary releases, verify
+   the bundled FFmpeg binary license for the exact build being shipped. If the
+   bundled binary is GPL-enabled, the combined distribution may need to comply
+   with GPL obligations. If it is LGPL-only, preserve LGPL notices and do not
+   restrict user rights for the FFmpeg component.
+
+----------------------------------------------------------------------------
+5. Build and packaging dependencies
+   Licenses: MIT, ISC, BSD-style, Apache-2.0, BlueOak-1.0.0, 0BSD, CC0-1.0,
+   and other permissive licenses as declared in package-lock.json.
+
+   Development/build tooling includes Vite, TypeScript, Tailwind CSS,
+   electron-builder, ESLint, sharp, and supporting npm packages. These tools
+   are used to build the application; only runtime files included in the final
+   installer are redistributed to end users.
+
+----------------------------------------------------------------------------
+
+END OF NOTICES

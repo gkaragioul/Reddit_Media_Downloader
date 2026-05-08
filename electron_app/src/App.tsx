@@ -83,6 +83,34 @@ export default function App() {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
+  // ── Update flow (matches MyLocalBackup pattern) ──────────
+
+  const performUpdate = useCallback(async (update: UpdateInfo) => {
+    setIsUpdating(true);
+    setUpdateStatus('Downloading...');
+    try {
+      const result = await window.electronAPI?.downloadUpdate(
+        update.downloadUrl,
+        update.fileName,
+        update.expectedSha256,
+      );
+
+      if (result?.success && result.filePath) {
+        setUpdateStatus('Installing update...');
+        window.electronAPI?.installUpdate(result.filePath, update.version);
+        // App will quit — the PowerShell script handles the rest
+      } else {
+        alert(`Update failed: ${result?.message || 'Download failed'}`);
+        setUpdateStatus('');
+        setIsUpdating(false);
+      }
+    } catch (err) {
+      alert(`Update failed: ${err}`);
+      setUpdateStatus('');
+      setIsUpdating(false);
+    }
+  }, []);
+
   // Get app version + check for pending update failure on mount
   useEffect(() => {
     window.electronAPI?.getVersion().then((v) => setAppVersion(v));
@@ -105,7 +133,7 @@ export default function App() {
         }
       }
     }).catch(() => {});
-  }, []);
+  }, [performUpdate]);
 
   // IPC listeners
   useEffect(() => {
@@ -168,34 +196,6 @@ export default function App() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleStart();
   };
-
-  // ── Update flow (matches MyLocalBackup pattern) ──────────
-
-  const performUpdate = useCallback(async (update: UpdateInfo) => {
-    setIsUpdating(true);
-    setUpdateStatus('Downloading...');
-    try {
-      const result = await window.electronAPI?.downloadUpdate(
-        update.downloadUrl,
-        update.fileName,
-        update.expectedSha256,
-      );
-
-      if (result?.success && result.filePath) {
-        setUpdateStatus('Installing update...');
-        window.electronAPI?.installUpdate(result.filePath, update.version);
-        // App will quit — the PowerShell script handles the rest
-      } else {
-        alert(`Update failed: ${result?.message || 'Download failed'}`);
-        setUpdateStatus('');
-        setIsUpdating(false);
-      }
-    } catch (err) {
-      alert(`Update failed: ${err}`);
-      setUpdateStatus('');
-      setIsUpdating(false);
-    }
-  }, []);
 
   const handleCheckUpdates = useCallback(async () => {
     setUpdateStatus('Checking...');
