@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="electron_app/assets/icon.png" alt="GKMediaDownloader logo" width="112">
-</p>
-
 <h1 align="center">GKMediaDownloader</h1>
 
 <p align="center">
