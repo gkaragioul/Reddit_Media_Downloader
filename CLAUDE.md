@@ -1,7 +1,7 @@
-# GKMediaDownloader
+# Reddit Media Downloader
 
 ## Project Overview
-Desktop app (Electron + React + TypeScript) that downloads media (photos & videos) from Reddit user profiles and subreddits. Product name: **GKMediaDownloader**.
+Desktop app (Electron + React + TypeScript) that downloads media (photos & videos) from Reddit user profiles and subreddits. Product name: **Reddit Media Downloader**.
 
 ## Architecture
 - **Frontend**: React + TypeScript + Tailwind CSS + Lucide icons (in `electron_app/src/`)
@@ -10,7 +10,7 @@ Desktop app (Electron + React + TypeScript) that downloads media (photos & video
   - `downloader.cjs` — Download engine (Node.js built-ins only)
   - `preload.js` — IPC bridge (contextBridge)
 - **Build**: Vite + electron-builder → NSIS installer `.exe` (~105MB with bundled ffmpeg)
-- **Installer**: NSIS with EULA, installs to Program Files, creates desktop/start menu shortcuts
+- **Installer**: NSIS with GPLv3 license text, installs to Program Files, creates desktop/start menu shortcuts
 
 ## Key Files
 - `electron_app/package.json` — App config, version, electron-builder + NSIS settings
@@ -19,7 +19,7 @@ Desktop app (Electron + React + TypeScript) that downloads media (photos & video
 - `electron_app/electron/main.cjs` — Electron main process + update system
 - `electron_app/electron/downloader.cjs` — Download engine
 - `electron_app/electron/preload.js` — IPC preload bridge
-- `electron_app/assets/license.txt` — Freeware EULA shown during installation
+- `electron_app/assets/license.txt` — GPLv3 license text shown during installation
 
 ## Build & Run
 ```bash
@@ -51,9 +51,9 @@ npm run dist            # Build NSIS installer .exe
 ## App Branding
 - Package name: `gkmd`
 - App ID: `com.gkmd.app`
-- Product name: `GKMediaDownloader`
-- Display title in app: "GKMediaDownloader"
-- Desktop shortcut name: "GKMediaDownloader"
+- Product name: `Reddit Media Downloader`
+- Display title in app: "Reddit Media Downloader"
+- Desktop shortcut name: "Reddit Media Downloader"
 
 ## Features
 - Download photos and videos from Reddit users/subreddits
@@ -65,7 +65,7 @@ npm run dist            # Build NSIS installer .exe
 - Pause/Resume/Cancel support
 - Auto-update from GitHub releases (with SHA256 integrity check)
 - About dialog with license info
-- NSIS installer with EULA, Program Files install, desktop shortcut
+- NSIS installer with GPLv3 license text, Program Files install, desktop shortcut
 
 ## Legacy Files (not part of main app)
 - `windows_reddit_downloader.py` — Old Python/tkinter version

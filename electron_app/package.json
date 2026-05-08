@@ -1,9 +1,10 @@
 {
   "name": "gkmd",
   "private": true,
-  "version": "4.2.4",
+  "version": "4.2.5",
   "description": "Reddit Media Downloader - Download media from Reddit profiles and subreddits",
   "author": "George Karagioules",
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -18,7 +19,7 @@
   },
   "build": {
     "appId": "com.gkmd.app",
-    "productName": "GKMediaDownloader",
+    "productName": "Reddit Media Downloader",
     "directories": {
       "output": "dist-electron"
     },
@@ -38,7 +39,7 @@
       "installerSidebar": null,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "GKMediaDownloader",
+      "shortcutName": "Reddit Media Downloader",
       "runAfterFinish": false,
       "artifactName": "Reddit-Media-Downloader-Setup.${ext}"
     },

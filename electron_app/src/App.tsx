@@ -254,7 +254,7 @@ export default function App() {
             {/* Green dot */}
             <circle cx="210" cy="194" r="10" fill="#4ade80" />
           </svg>
-          <span className="text-[11px] font-medium text-zinc-400 select-none">GKMediaDownloader</span>
+          <span className="text-[11px] font-medium text-zinc-400 select-none">Reddit Media Downloader</span>
         </div>
       </header>
 
@@ -492,7 +492,7 @@ export default function App() {
       {showAbout && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-zinc-800 border border-zinc-600/60 rounded-xl w-[420px] max-h-[360px] p-6 flex flex-col gap-4 shadow-2xl">
-            <h2 className="text-[16px] font-bold text-zinc-100">About GKMediaDownloader</h2>
+            <h2 className="text-[16px] font-bold text-zinc-100">About Reddit Media Downloader</h2>
             <div className="flex-1 overflow-y-auto space-y-3 text-[12px]">
               <div>
                 <span className="text-zinc-300 font-semibold">Developer:</span>{' '}
@@ -507,18 +507,18 @@ export default function App() {
                 <span className="text-zinc-400">2026</span>
               </div>
               <div className="pt-2 border-t border-zinc-700">
-                <span className="text-indigo-400 font-bold text-[11px]">Freeware License</span>
+                <span className="text-indigo-400 font-bold text-[11px]">GNU GPLv3 License</span>
                 <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
                   Copyright &copy; 2026 George Karagioules. All rights reserved.
                 </p>
                 <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
-                  This software is provided free of charge for personal and commercial use. You may download and use it at no cost.
+                  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License version 3 or later.
                 </p>
                 <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
-                  You may NOT modify, reverse-engineer, redistribute, or sell this software or any portion of it without prior written permission from the author.
+                  Source code is available from the project repository. Bundled third-party components retain their own license notices.
                 </p>
                 <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
-                  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. THE DEVELOPER IS NOT LIABLE FOR ANY DAMAGES ARISING FROM USE OF THIS SOFTWARE.
+                  This program is distributed WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
                 </p>
               </div>
             </div>

@@ -1,11 +1,11 @@
-GKMediaDownloader - Third-Party Notices
-=======================================
+Reddit Media Downloader - Third-Party Notices
+=============================================
 
 This software incorporates components from the projects listed below. The
 original copyright notices and licenses under which the author received such
-components are set forth here. The restrictions in the GKMediaDownloader
-freeware EULA apply only to the original portions of the Software authored by
-George Karagioules; the components below retain their own licenses.
+components are set forth here. Reddit Media Downloader is distributed under
+the GNU General Public License version 3 or later; third-party components
+retain their own licenses where applicable.
 
 Last updated: 2026-05-08.
 
@@ -40,18 +40,17 @@ Last updated: 2026-05-08.
 
 ----------------------------------------------------------------------------
 4. ffmpeg-static and FFmpeg
-   License: ffmpeg-static package under GPL-compatible package terms; bundled
-   FFmpeg binary license depends on the distributed FFmpeg build.
+   License: GPL-3.0-or-later for ffmpeg-static; bundled Windows FFmpeg binary
+   is GPL-enabled.
    Projects:
      https://github.com/eugeneware/ffmpeg-static
      https://ffmpeg.org/
 
-   GKMediaDownloader uses ffmpeg-static to locate a bundled FFmpeg executable
-   for muxing and processing media. Before publishing binary releases, verify
-   the bundled FFmpeg binary license for the exact build being shipped. If the
-   bundled binary is GPL-enabled, the combined distribution may need to comply
-   with GPL obligations. If it is LGPL-only, preserve LGPL notices and do not
-   restrict user rights for the FFmpeg component.
+   Reddit Media Downloader uses ffmpeg-static to locate a bundled FFmpeg
+   executable for muxing and processing media. The Windows binary currently
+   shipped by ffmpeg-static reports --enable-gpl and --enable-version3, so
+   binary releases are distributed under GPL-compatible terms with source
+   available from this repository.
 
 ----------------------------------------------------------------------------
 5. Build and packaging dependencies

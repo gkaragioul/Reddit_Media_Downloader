@@ -82,8 +82,10 @@ The NSIS installer is written to `electron_app/dist-electron/`. Publish the inst
 
 ## License
 
-Reddit Media Downloader is proprietary freeware. It is free to use for personal and commercial use, but modification, redistribution, resale, and sublicensing require prior written permission from George Karagioules.
+Reddit Media Downloader is free software released under the GNU General Public License v3.0 or later. You may use, study, share, and modify it under the terms of the GPL.
 
-See [LICENSE](LICENSE) for the EULA and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled third-party notices.
+Binary releases include a bundled GPL-enabled FFmpeg build through `ffmpeg-static`; the corresponding application source is available in this repository.
+
+See [LICENSE](LICENSE) for the full GPL text and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled third-party notices.
 
 For licensing inquiries, see the Contact section of https://github.com/gkaragioul.
