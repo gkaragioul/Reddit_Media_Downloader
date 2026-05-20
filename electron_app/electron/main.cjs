@@ -100,7 +100,7 @@ function httpsGetJson(url, useETagCache = false) {
                 res.resume();
                 return resolve(cachedRelease);
             }
-            if (res.statusCode === 301 || res.statusCode === 302) {
+            if ([301, 302, 303, 307, 308].includes(res.statusCode)) {
                 const location = res.headers.location;
                 res.resume();
                 if (location) return httpsGetJson(location, useETagCache).then(resolve, reject);
@@ -144,7 +144,7 @@ function httpsDownloadFile(url, destPath, onProgress, hops = 0) {
         };
 
         https.get(url, options, (res) => {
-            if (res.statusCode === 301 || res.statusCode === 302) {
+            if ([301, 302, 303, 307, 308].includes(res.statusCode)) {
                 const location = res.headers.location;
                 res.resume();
                 if (location) return httpsDownloadFile(location, destPath, onProgress, hops + 1).then(resolve, reject);
