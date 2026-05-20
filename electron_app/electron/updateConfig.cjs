@@ -1,4 +1,4 @@
-const REPO_OWNER = 'karagioules';
+const REPO_OWNER = 'georgekgr12';
 const REPO_NAME = 'Reddit_Media_Downloader';
 const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
 
