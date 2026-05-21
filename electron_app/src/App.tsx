@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+﻿import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ArrowRight,
   Settings,
@@ -9,7 +9,7 @@ import {
   X,
 } from 'lucide-react';
 
-// ── Type declarations ───────────────────────────────────────
+// â”€â”€ Type declarations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface ProgressData {
   downloaded: number;
@@ -26,22 +26,6 @@ interface CompleteData {
   cancelled?: boolean;
 }
 
-interface UpdateInfo {
-  version: string;
-  downloadUrl: string;
-  releaseNotes: string;
-  fileName: string;
-  expectedSha256?: string | null;
-  error?: never;
-}
-
-interface UpdateCheckError {
-  error: string;
-  version?: never;
-}
-
-type UpdateCheckResult = UpdateInfo | UpdateCheckError | null;
-
 declare global {
   interface Window {
     electronAPI?: {
@@ -50,21 +34,15 @@ declare global {
       stopDownload: () => void;
       openOutputFolder: () => void;
       saveLogs: (logLines: string[]) => Promise<{ success: boolean; filePath?: string; message?: string }>;
-      checkForUpdates: (isAuto?: boolean) => Promise<UpdateCheckResult>;
-      dismissUpdate: (version: string) => Promise<void>;
-      downloadUpdate: (url: string, fileName: string, expectedSha256?: string | null) => Promise<{ success: boolean; message?: string; filePath?: string }>;
-      installUpdate: (filePath: string, version: string) => void;
       getVersion: () => Promise<string>;
-      checkPendingUpdateFailed: () => Promise<string | null>;
       onDownloadProgress: (cb: (data: ProgressData) => void) => () => void;
       onDownloadLog: (cb: (msg: string) => void) => () => void;
       onDownloadComplete: (cb: (data: CompleteData) => void) => () => void;
-      onUpdateDownloadProgress: (cb: (pct: number) => void) => () => void;
     };
   }
 }
 
-// ── App component ───────────────────────────────────────────
+// â”€â”€ App component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function App() {
   const [input, setInput] = useState('');
@@ -76,8 +54,6 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [appVersion, setAppVersion] = useState('');
-  const [updateStatus, setUpdateStatus] = useState('');
-  const [isUpdating, setIsUpdating] = useState(false);
   const [settings, setSettings] = useState({
     skipDuplicates: true,
     requestDelay: 0.5,
@@ -91,57 +67,10 @@ export default function App() {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  // ── Update flow (matches MyLocalBackup pattern) ──────────
-
-  const performUpdate = useCallback(async (update: UpdateInfo) => {
-    setIsUpdating(true);
-    setUpdateStatus('Downloading...');
-    try {
-      const result = await window.electronAPI?.downloadUpdate(
-        update.downloadUrl,
-        update.fileName,
-        update.expectedSha256,
-      );
-
-      if (result?.success && result.filePath) {
-        setUpdateStatus('Installing update...');
-        window.electronAPI?.installUpdate(result.filePath, update.version);
-        // App will quit — the PowerShell script handles the rest
-      } else {
-        alert(`Update failed: ${result?.message || 'Download failed'}`);
-        setUpdateStatus('');
-        setIsUpdating(false);
-      }
-    } catch (err) {
-      alert(`Update failed: ${err}`);
-      setUpdateStatus('');
-      setIsUpdating(false);
-    }
-  }, []);
-
-  // Get app version + check for pending update failure on mount
+  // Get app version on mount
   useEffect(() => {
     window.electronAPI?.getVersion().then((v) => setAppVersion(v));
-
-    // Check if a previous update failed to apply
-    window.electronAPI?.checkPendingUpdateFailed().then((failedVersion) => {
-      if (failedVersion) {
-        alert(`The previous update to ${failedVersion} did not install successfully.\n\nPlease try updating again, or download the installer manually from GitHub.`);
-      }
-    });
-
-    // Auto-check for updates on startup (silent)
-    window.electronAPI?.checkForUpdates(true).then((result) => {
-      if (result?.version) {
-        const doUpdate = confirm(`A new version (${result.version}) is available.\n\nRelease Notes:\n${result.releaseNotes}\n\nDo you want to update now?`);
-        if (doUpdate) {
-          performUpdate(result);
-        } else {
-          window.electronAPI?.dismissUpdate(result.version);
-        }
-      }
-    }).catch(() => {});
-  }, [performUpdate]);
+  }, []);
 
   // IPC listeners
   useEffect(() => {
@@ -165,15 +94,10 @@ export default function App() {
       }
     });
 
-    const cleanupUpdateProgress = window.electronAPI?.onUpdateDownloadProgress((pct) => {
-      setUpdateStatus(`Downloading: ${pct}%`);
-    });
-
     return () => {
       cleanupProgress?.();
       cleanupLog?.();
       cleanupComplete?.();
-      cleanupUpdateProgress?.();
     };
   }, []);
 
@@ -205,37 +129,9 @@ export default function App() {
     if (e.key === 'Enter') handleStart();
   };
 
-  const handleCheckUpdates = useCallback(async () => {
-    setUpdateStatus('Checking...');
-    try {
-      const result = await window.electronAPI?.checkForUpdates(false);
-      if (result?.error) {
-        setUpdateStatus('Check failed');
-        alert(`Update check failed:\n${result.error}`);
-        setTimeout(() => setUpdateStatus(''), 3000);
-      } else if (result?.version) {
-        const doUpdate = confirm(
-          `A new version (${result.version}) is available.\n\nRelease Notes:\n${result.releaseNotes}\n\nDo you want to update now?`,
-        );
-        if (doUpdate) {
-          await performUpdate(result);
-        } else {
-          window.electronAPI?.dismissUpdate(result.version);
-          setUpdateStatus('');
-        }
-      } else {
-        setUpdateStatus('Up to date');
-        setTimeout(() => setUpdateStatus(''), 3000);
-      }
-    } catch {
-      setUpdateStatus('Check failed');
-      setTimeout(() => setUpdateStatus(''), 3000);
-    }
-  }, [performUpdate]);
-
   return (
     <div className="h-screen w-full bg-zinc-900 text-zinc-100 flex flex-col overflow-hidden">
-      {/* ── Title bar ─────────────────────────────────────── */}
+      {/* â”€â”€ Title bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <header
         className="title-bar flex items-center h-9 px-4 shrink-0 bg-zinc-900 border-b border-zinc-700/40"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
@@ -258,7 +154,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* ── Main content ──────────────────────────────────── */}
+      {/* â”€â”€ Main content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <main className="flex-1 flex flex-col px-5 pb-0 pt-3 gap-3 overflow-hidden">
         {/* Input row */}
         <div className="flex gap-2 shrink-0">
@@ -268,7 +164,7 @@ export default function App() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="u/username or r/subreddit"
-            disabled={isDownloading || isUpdating}
+            disabled={isDownloading}
             spellCheck={false}
             className="flex-1 h-10 px-3.5 bg-zinc-800 border border-zinc-600/50 rounded-lg text-[13px] text-zinc-100 placeholder:text-zinc-400 focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/20 transition-all disabled:opacity-40 outline-none"
           />
@@ -276,7 +172,7 @@ export default function App() {
           {!isDownloading ? (
             <button
               onClick={handleStart}
-              disabled={!input.trim() || isUpdating}
+              disabled={!input.trim()}
               className="h-10 px-5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-[13px] font-medium rounded-lg transition-colors disabled:opacity-20 disabled:pointer-events-none flex items-center gap-1.5 shrink-0"
             >
               Start
@@ -455,18 +351,10 @@ export default function App() {
         </div>
       </main>
 
-      {/* ── Footer bar ──────────────────────────────────── */}
+      {/* â”€â”€ Footer bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <footer className="flex items-center h-8 px-4 shrink-0 bg-zinc-950/60 border-t border-zinc-700/40">
         <div className="flex items-center gap-0 text-[11px]">
           <span className="text-zinc-500">Version {appVersion || '--'}</span>
-          <span className="text-zinc-700 mx-2">|</span>
-          <button
-            onClick={handleCheckUpdates}
-            disabled={isUpdating}
-            className="text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-60"
-          >
-            {updateStatus || 'Check for Updates'}
-          </button>
           <span className="text-zinc-700 mx-2">|</span>
           <button
             onClick={() => setShowAbout(true)}
@@ -488,7 +376,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* ── About overlay ───────────────────────────────── */}
+      {/* â”€â”€ About overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {showAbout && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-zinc-800 border border-zinc-600/60 rounded-xl w-[420px] max-h-[360px] p-6 flex flex-col gap-4 shadow-2xl">

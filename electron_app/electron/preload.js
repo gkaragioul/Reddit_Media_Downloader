@@ -10,13 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openOutputFolder: () => ipcRenderer.send('open-output-folder'),
     saveLogs: (logLines) => ipcRenderer.invoke('save-logs', logLines),
 
-    // Update system
     getVersion: () => ipcRenderer.invoke('get-version'),
-    checkForUpdates: (isAuto) => ipcRenderer.invoke('check-for-updates', isAuto),
-    dismissUpdate: (version) => ipcRenderer.invoke('dismiss-update', version),
-    downloadUpdate: (url, fileName, expectedSha256) => ipcRenderer.invoke('download-update', url, fileName, expectedSha256),
-    installUpdate: (filePath, version) => ipcRenderer.send('install-update', filePath, version),
-    checkPendingUpdateFailed: () => ipcRenderer.invoke('check-pending-update-failed'),
 
     // Listeners (main → renderer) — each returns a cleanup function
     onDownloadProgress: (callback) => {
@@ -33,10 +27,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
         const handler = (_event, stats) => callback(stats);
         ipcRenderer.on('download-complete', handler);
         return () => ipcRenderer.removeListener('download-complete', handler);
-    },
-    onUpdateDownloadProgress: (callback) => {
-        const handler = (_event, pct) => callback(pct);
-        ipcRenderer.on('update-download-progress', handler);
-        return () => ipcRenderer.removeListener('update-download-progress', handler);
     },
 });

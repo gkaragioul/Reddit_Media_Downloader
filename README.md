@@ -14,7 +14,7 @@ https://github.com/user-attachments/assets/34691703-eeae-4040-ab24-1379d7f6f248
 </p>
 
 <p>
-  <a href="https://github.com/georgekgr12/Reddit_Media_Downloader/releases/latest">Download</a> &bull;
+  <a href="https://github.com/gkaragioul/Reddit_Media_Downloader/releases">Download</a> &bull;
   <a href="#features">Features</a> &bull;
   <a href="#requirements">Requirements</a> &bull;
   <a href="#building">Building</a> &bull;
@@ -35,7 +35,6 @@ https://github.com/user-attachments/assets/34691703-eeae-4040-ab24-1379d7f6f248
 - **Smart organization**: Save into separate `Photos/` and `Videos/` folders.
 - **Duplicate detection**: Skip already-downloaded files using SHA256 content hashing.
 - **Pause, resume, and cancel**: Keep long downloads controllable.
-- **Auto updates**: Check this repository's Releases tab, verify SHA256 when provided, and install the accepted update.
 
 ## Usage
 
@@ -60,7 +59,7 @@ https://github.com/user-attachments/assets/34691703-eeae-4040-ab24-1379d7f6f248
 ## Requirements
 
 - Windows 10 or 11.
-- Internet access for Reddit, RedGIFs, supported media hosts, and GitHub update checks.
+- Internet access for Reddit, RedGIFs, and supported media hosts.
 - Enough free disk space for downloaded media and temporary video muxing files.
 
 ## Building
@@ -78,7 +77,7 @@ cd electron_app
 npm run dist
 ```
 
-The NSIS installer is written to `electron_app/dist-electron/`. Publish the installer on this repository's Releases tab and include `SHA256: <64-char hex>` in the release notes when you want the in-app updater to verify the download.
+The NSIS installer is written to `electron_app/dist-electron/`. The app does not include in-app update checks, update prompts, or automatic installer downloads; users install newer builds manually if you publish them.
 
 ## License
 
