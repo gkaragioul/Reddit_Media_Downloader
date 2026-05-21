@@ -14,6 +14,7 @@ https://github.com/user-attachments/assets/34691703-eeae-4040-ab24-1379d7f6f248
 </p>
 
 <p>
+  <a href="https://github.com/gkaragioul/Reddit_Media_Downloader/releases/latest">Download</a> &bull;
   <a href="#features">Features</a> &bull;
   <a href="#requirements">Requirements</a> &bull;
   <a href="#building">Building</a> &bull;
