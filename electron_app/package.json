@@ -20,6 +20,10 @@
   "build": {
     "appId": "com.gkmd.app",
     "productName": "Reddit Media Downloader",
+    "toolsets": {
+      "winCodeSign": "1.1.0"
+    },
+    "afterPack": "scripts/after-pack.cjs",
     "directories": {
       "output": "dist-electron"
     },
@@ -27,7 +31,8 @@
       "target": [
         "nsis"
       ],
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
@@ -55,6 +60,12 @@
       {
         "from": "assets/THIRD_PARTY_NOTICES.txt",
         "to": "THIRD_PARTY_NOTICES.txt"
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "assets/icon.ico",
+        "to": "icon.ico"
       }
     ],
     "asarUnpack": [

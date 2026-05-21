@@ -5,6 +5,12 @@ const RedditDownloader = require('./downloader.cjs');
 
 let downloader = null;
 
+function getAppIconPath() {
+    return app.isPackaged
+        ? path.join(process.resourcesPath, 'icon.ico')
+        : path.join(__dirname, '../assets/icon.ico');
+}
+
 function createWindow() {
     const win = new BrowserWindow({
         width: 860,
@@ -12,6 +18,7 @@ function createWindow() {
         minWidth: 560,
         minHeight: 420,
         backgroundColor: '#18181b',
+        icon: getAppIconPath(),
         titleBarStyle: 'hidden',
         titleBarOverlay: {
             color: '#18181b',

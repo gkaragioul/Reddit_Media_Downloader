@@ -403,7 +403,7 @@ export default function App() {
                   This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License version 3 or later.
                 </p>
                 <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
-                  Source code is available from the project repository. Bundled third-party components retain their own license notices.
+                  Bundled third-party components retain their own license notices.
                 </p>
                 <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
                   This program is distributed WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
