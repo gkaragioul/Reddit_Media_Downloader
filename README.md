@@ -14,7 +14,6 @@ https://github.com/user-attachments/assets/34691703-eeae-4040-ab24-1379d7f6f248
 </p>
 
 <p>
-  <a href="https://github.com/gkaragioul/Reddit_Media_Downloader/releases">Download</a> &bull;
   <a href="#features">Features</a> &bull;
   <a href="#requirements">Requirements</a> &bull;
   <a href="#building">Building</a> &bull;
@@ -77,13 +76,17 @@ cd electron_app
 npm run dist
 ```
 
-The NSIS installer is written to `electron_app/dist-electron/`. The app does not include in-app update checks, update prompts, or automatic installer downloads; users install newer builds manually if you publish them.
+The NSIS installer is written to `electron_app/dist-electron/`.
+
+## Updates
+
+Reddit Media Downloader does not include update checks, update prompts, automatic installer downloads, or any app-managed GitHub release flow. The installed app never offers updates.
 
 ## License
 
 Reddit Media Downloader is free software released under the GNU General Public License v3.0 or later. You may use, study, share, and modify it under the terms of the GPL.
 
-Binary releases include a bundled GPL-enabled FFmpeg build through `ffmpeg-static`; the corresponding application source is available in this repository.
+Windows installers include a bundled GPL-enabled FFmpeg build through `ffmpeg-static`; the corresponding application source is available in this repository.
 
 See [LICENSE](LICENSE) for the full GPL text and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled third-party notices.
 
