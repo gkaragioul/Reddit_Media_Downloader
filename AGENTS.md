@@ -6,7 +6,7 @@ Desktop app (Electron + React + TypeScript) that downloads media (photos & video
 ## Architecture
 - **Frontend**: React + TypeScript + Tailwind CSS + Lucide icons (in `electron_app/src/`)
 - **Backend**: Electron main process (in `electron_app/electron/`)
-  - `main.cjs` — Electron window + IPC handlers + update system
+  - `main.cjs` — Electron window + IPC handlers
   - `downloader.cjs` — Download engine (Node.js built-ins only)
   - `preload.js` — IPC bridge (contextBridge)
 - **Build**: Vite + electron-builder → NSIS installer `.exe` (~105MB with bundled ffmpeg)
@@ -16,7 +16,7 @@ Desktop app (Electron + React + TypeScript) that downloads media (photos & video
 - `electron_app/package.json` — App config, version, electron-builder + NSIS settings
 - `electron_app/src/App.tsx` — Main React UI component
 - `electron_app/src/App.css` — Custom styles (scrollbars, title bar)
-- `electron_app/electron/main.cjs` — Electron main process + update system
+- `electron_app/electron/main.cjs` — Electron main process
 - `electron_app/electron/downloader.cjs` — Download engine
 - `electron_app/electron/preload.js` — IPC preload bridge
 - `electron_app/assets/license.txt` — GPLv3 license text shown during installation
@@ -29,24 +29,14 @@ npm run electron:dev    # Dev mode (Vite + Electron)
 npm run dist            # Build NSIS installer .exe
 ```
 
-## Version & Updates
+## Version
 - Version is set in `electron_app/package.json` → `"version"` field
-- Update system checks GitHub releases at `georgekgr12/Reddit_Media_Downloader`
-- Update flow (matches MyLocalBackup pattern):
-  1. Check `api.github.com/repos/georgekgr12/Reddit_Media_Downloader/releases/latest`
-  2. Compare tag version with current app version
-  3. Prompt user with release notes
-  4. Download installer to temp (with SHA256 verification if hash in release notes)
-  5. Create PowerShell helper script that: waits → runs installer silently (`/S`) with UAC elevation → relaunches app
-  6. Quit current app, let helper script handle the rest
-- Failed update detection: writes pending marker before install, checks on next launch
-- Dismissed version tracking: user can skip a version, won't be prompted again (auto-check)
-- Version displayed in footer bar (bottom-left)
+- Version is displayed in the footer bar (bottom-left)
+- The app does not include update checks, update prompts, or automatic installer downloads.
 
 ## GitHub
-- Repo: `https://github.com/georgekgr12/Reddit_Media_Downloader`
-- Releases should contain the NSIS `.exe` installer with SHA256 hash in release notes body
-- SHA256 format in release notes: `SHA256: <64-char hex>`
+- Repo: `https://github.com/gkaragioul/Reddit_Media_Downloader`
+- Release installers can be published manually, but the app does not check GitHub for updates.
 
 ## App Branding
 - Package name: `gkmd`
@@ -63,7 +53,6 @@ npm run dist            # Build NSIS installer .exe
 - Crosspost video support
 - Gallery extraction (including video galleries)
 - Pause/Resume/Cancel support
-- Auto-update from GitHub releases (with SHA256 integrity check)
 - About dialog with license info
 - NSIS installer with GPLv3 license text, Program Files install, desktop shortcut
 
