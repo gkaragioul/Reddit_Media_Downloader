@@ -167,7 +167,7 @@ struct ContentView: View {
             
             Divider()
             
-            // EULA
+            // License notice
             ScrollView {
                 Text(eulaText)
                     .font(.system(size: 10))
@@ -193,44 +193,29 @@ struct ContentView: View {
     
     private var eulaText: String {
         """
-        END USER LICENSE AGREEMENT (EULA)
+        GNU GPLV3-OR-LATER LICENSE NOTICE
         
-        Last Updated: January 2026
+        Last Updated: June 2026
         
-        IMPORTANT: Please read this End User License Agreement ("Agreement") carefully before using Reddit Profile Downloader ("Software").
+        Reddit Media Downloader is free software released under the GNU General Public License version 3 or later.
         
-        1. LICENSE GRANT
-        George Karagioules ("Developer") grants you a limited, non-exclusive, non-transferable license to use the Software for personal, non-commercial purposes only.
+        1. SOFTWARE FREEDOM
+        You may use, study, share, and modify this software under the terms of the GNU General Public License version 3 or later.
         
-        2. RESTRICTIONS
-        You may NOT:
-        • Modify, reverse engineer, decompile, or disassemble the Software
-        • Distribute, sell, lease, or sublicense the Software
-        • Use the Software for any illegal or unauthorized purpose
-        • Remove any proprietary notices or labels on the Software
-        • Use the Software to violate Reddit's Terms of Service or any third-party rights
+        2. SOURCE AND NOTICES
+        The corresponding source code and third-party notices are available in the project repository:
+        https://github.com/gkaragioul/Reddit_Media_Downloader
         
-        3. INTELLECTUAL PROPERTY
-        The Software and all copies thereof are proprietary to the Developer and title thereto remains exclusively with the Developer. All rights in the Software not specifically granted in this Agreement are reserved to the Developer.
+        3. USER RESPONSIBILITY
+        Use this software only for media you have the right or permission to download. You are responsible for complying with Reddit's terms, RedGIFs' terms, copyright law, privacy rights, and local rules that apply to the content you download.
         
-        4. DISCLAIMER OF WARRANTIES
+        4. NO AFFILIATION
+        This project is not affiliated with, endorsed by, or sponsored by Reddit, RedGIFs, or any media host.
+        
+        5. DISCLAIMER OF WARRANTIES
         THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
         
-        5. LIMITATION OF LIABILITY
-        IN NO EVENT SHALL THE DEVELOPER BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES ARISING OUT OF OR IN CONNECTION WITH THIS AGREEMENT OR THE USE OF THE SOFTWARE.
-        
-        6. USER RESPONSIBILITY
-        You are solely responsible for ensuring that your use of the Software complies with all applicable laws and Reddit's Terms of Service. The Developer is not responsible for any content downloaded using this Software.
-        
-        7. TERMINATION
-        This license is effective until terminated. It will terminate automatically if you fail to comply with any term of this Agreement.
-        
-        8. GOVERNING LAW
-        This Agreement shall be governed by and construed in accordance with applicable laws.
-        
-        By using this Software, you acknowledge that you have read, understood, and agree to be bound by the terms of this Agreement.
-        
-        © 2026 George Karagioules. All Rights Reserved.
+        Copyright 2026 George Karagioules.
         
         Contact: georgekaragioules@gmail.com
         """

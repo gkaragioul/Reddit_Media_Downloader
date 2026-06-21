@@ -376,7 +376,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* â”€â”€ About overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* About overlay */}
       {showAbout && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-zinc-800 border border-zinc-600/60 rounded-xl w-[420px] max-h-[360px] p-6 flex flex-col gap-4 shadow-2xl">
@@ -395,15 +395,18 @@ export default function App() {
                 <span className="text-zinc-400">2026</span>
               </div>
               <div className="pt-2 border-t border-zinc-700">
-                <span className="text-indigo-400 font-bold text-[11px]">GNU GPLv3 License</span>
+                <span className="text-indigo-400 font-bold text-[11px]">GNU GPLv3-or-later License</span>
                 <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
-                  Copyright &copy; 2026 George Karagioules. All rights reserved.
+                  Copyright &copy; 2026 George Karagioules.
                 </p>
                 <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
                   This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License version 3 or later.
                 </p>
                 <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
-                  Bundled third-party components retain their own license notices.
+                  Bundled third-party components retain their own license notices, including the GPL-enabled FFmpeg build used for video muxing.
+                </p>
+                <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
+                  Use this app only for media you have the right or permission to download, and comply with Reddit, RedGIFs, copyright, privacy, and local rules.
                 </p>
                 <p className="text-zinc-500 text-[11px] leading-relaxed mt-1.5">
                   This program is distributed WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

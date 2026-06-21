@@ -7,7 +7,7 @@ components are set forth here. Reddit Media Downloader is distributed under
 the GNU General Public License version 3 or later; third-party components
 retain their own licenses where applicable.
 
-Last updated: 2026-05-08.
+Last updated: 2026-06-22.
 
 ----------------------------------------------------------------------------
 1. Electron, Chromium, and Node.js
@@ -61,6 +61,15 @@ Last updated: 2026-05-08.
    electron-builder, ESLint, sharp, and supporting npm packages. These tools
    are used to build the application; only runtime files included in the final
    installer are redistributed to end users.
+
+----------------------------------------------------------------------------
+6. Platform services and media rights
+
+   Reddit, RedGIFs, and media hosts are external services, not bundled
+   third-party software components. Their names, services, APIs, and hosted
+   media remain subject to their own terms and their respective rightsholders'
+   rights. Reddit Media Downloader is not affiliated with, endorsed by, or
+   sponsored by Reddit, RedGIFs, or any media host.
 
 ----------------------------------------------------------------------------
 
