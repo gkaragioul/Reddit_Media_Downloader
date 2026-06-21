@@ -10,7 +10,7 @@ Desktop app (Electron + React + TypeScript) that downloads media (photos & video
   - `downloader.cjs` — Download engine (Node.js built-ins only)
   - `preload.js` — IPC bridge (contextBridge)
 - **Build**: Vite + electron-builder → NSIS installer `.exe` (~105MB with bundled ffmpeg)
-- **Installer**: NSIS with GPLv3 license text, installs to Program Files, creates desktop/start menu shortcuts
+- **Installer**: NSIS with GPLv3-or-later license text plus the application responsible-use notice, installs to Program Files, creates desktop/start menu shortcuts
 
 ## Key Files
 - `electron_app/package.json` — App config, version, electron-builder + NSIS settings
@@ -19,7 +19,7 @@ Desktop app (Electron + React + TypeScript) that downloads media (photos & video
 - `electron_app/electron/main.cjs` — Electron main process
 - `electron_app/electron/downloader.cjs` — Download engine
 - `electron_app/electron/preload.js` — IPC preload bridge
-- `electron_app/assets/license.txt` — GPLv3 license text shown during installation
+- `electron_app/assets/license.txt` — Installer license screen: application notice followed by the GPLv3 text
 
 ## Build & Run
 ```bash
@@ -54,7 +54,7 @@ npm run dist            # Build NSIS installer .exe
 - Gallery extraction (including video galleries)
 - Pause/Resume/Cancel support
 - About dialog with license info
-- NSIS installer with GPLv3 license text, Program Files install, desktop shortcut
+- NSIS installer with GPLv3-or-later license text and responsible-use notice, Program Files install, desktop shortcut
 
 ## Legacy Files (not part of main app)
 - `windows_reddit_downloader.py` — Old Python/tkinter version

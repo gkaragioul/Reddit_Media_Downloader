@@ -1,3 +1,26 @@
+REDDIT MEDIA DOWNLOADER APPLICATION NOTICE
+==========================================
+
+Reddit Media Downloader is free software licensed under the GNU General
+Public License version 3 or later.
+
+This installer includes a GPL-enabled FFmpeg build through ffmpeg-static.
+The corresponding application source is available at:
+https://github.com/gkaragioul/Reddit_Media_Downloader
+
+Reddit, RedGIFs, and media hosts are external services. Downloaded media
+remains owned by its respective rightsholders. Use this app only for media
+you have the right or permission to download, and comply with Reddit's
+terms, RedGIFs' terms, copyright law, privacy rights, and local rules that
+apply to the content you download.
+
+This project is not affiliated with, endorsed by, or sponsored by Reddit,
+RedGIFs, or any media host.
+
+The GNU General Public License text follows unchanged.
+
+----------------------------------------------------------------------------
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 

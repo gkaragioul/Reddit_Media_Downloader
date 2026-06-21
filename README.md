@@ -9,7 +9,7 @@ https://github.com/user-attachments/assets/34691703-eeae-4040-ab24-1379d7f6f248
 <hr>
 
 <p>
-  <strong>Free Windows desktop app for downloading public Reddit photos and videos.</strong><br>
+  <strong>GPL-licensed Windows desktop app for downloading public Reddit photos and videos.</strong><br>
   <em>Batch profile and subreddit downloads with duplicate detection, Reddit video audio muxing, and organized photo/video folders.</em>
 </p>
 
@@ -62,6 +62,12 @@ https://github.com/user-attachments/assets/34691703-eeae-4040-ab24-1379d7f6f248
 - Internet access for Reddit, RedGIFs, and supported media hosts.
 - Enough free disk space for downloaded media and temporary video muxing files.
 
+## Responsible Use
+
+Reddit Media Downloader is intended for lawful personal archiving and organization of public media that you have the right or permission to download.
+
+You are responsible for complying with Reddit's terms, RedGIFs' terms, copyright law, privacy rights, and any local rules that apply to the content you download. Downloaded media remains owned by its respective rightsholders. This project is not affiliated with, endorsed by, or sponsored by Reddit, RedGIFs, or any media host.
+
 ## Building
 
 ```bash
@@ -87,7 +93,7 @@ Reddit Media Downloader does not include update checks, update prompts, automati
 
 Reddit Media Downloader is free software released under the GNU General Public License v3.0 or later. You may use, study, share, and modify it under the terms of the GPL.
 
-Windows installers include a bundled GPL-enabled FFmpeg build through `ffmpeg-static`; the corresponding application source is available in this repository.
+Windows installers include a bundled GPL-enabled FFmpeg build through `ffmpeg-static`; the corresponding application source is available in this repository and in the source archive for each tagged release. The installer license screen includes the GPL text and a short application notice about responsible use.
 
 See [LICENSE](LICENSE) for the full GPL text and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled third-party notices.
 
