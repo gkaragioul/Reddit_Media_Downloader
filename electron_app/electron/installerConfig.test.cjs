@@ -5,7 +5,7 @@ const path = require('node:path');
 const packageJson = require(path.join('..', 'package.json'));
 
 test('package version matches the release train', () => {
-    assert.equal(packageJson.version, '4.2.10');
+    assert.equal(packageJson.version, '4.2.11');
 });
 
 test('windows installer artifact uses repository product name', () => {

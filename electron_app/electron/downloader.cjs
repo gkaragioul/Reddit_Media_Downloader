@@ -14,7 +14,24 @@ const os = require('os');
 
 // ── Constants ──────────────────────────────────────────────────
 
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) GKMD/4.0';
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) RedditMediaDownloader/4.2.11 Chrome/120.0 Safari/537.36';
+const DEFAULT_HEADERS = {
+  'User-Agent': USER_AGENT,
+  'Accept': '*/*',
+  'Accept-Language': 'en-US,en;q=0.9',
+};
+const API_HEADERS = {
+  'User-Agent': USER_AGENT,
+  'Accept': 'application/json,text/plain,*/*',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Cache-Control': 'no-cache',
+};
+const RSS_HEADERS = {
+  'User-Agent': USER_AGENT,
+  'Accept': 'application/atom+xml,application/rss+xml,application/xml,text/xml,*/*',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Cache-Control': 'no-cache',
+};
 const VALID_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.webm']);
 const VIDEO_EXT = new Set(['.mp4', '.webm']);
 const MAX_PAGES = 12;
@@ -53,6 +70,12 @@ function buildListingUrl(kind, value, after) {
     ? `https://www.reddit.com/user/${value}/submitted/.json`
     : `https://www.reddit.com/r/${value}/new/.json`;
   return base + '?limit=100&raw_json=1' + (after ? `&after=${after}` : '');
+}
+
+function buildRssUrl(kind, value) {
+  return kind === 'user'
+    ? `https://www.reddit.com/user/${encodeURIComponent(value)}/submitted/.rss?limit=100`
+    : `https://www.reddit.com/r/${encodeURIComponent(value)}/new/.rss?limit=100`;
 }
 
 function detectExt(url, defaultExt = '.bin') {
@@ -139,6 +162,14 @@ function getMediaEntries(postData) {
     }
   }
 
+  // RSS fallback entries only expose direct media links parsed from the feed.
+  if (Array.isArray(postData._rss_media_urls)) {
+    for (const url of postData._rss_media_urls) {
+      const ext = detectExt(url, '');
+      if (ext || url.includes('redgifs.com')) add(url, VIDEO_EXT.has(ext) ? 'video' : 'photo');
+    }
+  }
+
   // 4. Gallery
   const gallery = postData.gallery_data || effectivePost.gallery_data;
   const meta = postData.media_metadata || effectivePost.media_metadata;
@@ -180,6 +211,128 @@ function nowStamp() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
+
+function decodeEntities(value) {
+  return String(value || '')
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x2F;/g, '/')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)));
+}
+
+function stripTags(value) {
+  return decodeEntities(value).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function extractTag(block, tagName) {
+  const match = block.match(new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'i'));
+  return match ? decodeEntities(match[1]).trim() : '';
+}
+
+function extractAtomLinks(block) {
+  const links = [];
+  const re = /<link\b[^>]*\bhref=(["'])(.*?)\1[^>]*>/gi;
+  let match;
+  while ((match = re.exec(block))) links.push(decodeEntities(match[2]));
+  return links;
+}
+
+function extractUrlsFromHtml(value) {
+  const html = decodeEntities(value);
+  const urls = [];
+  const re = /\b(?:href|src)=(["'])(https?:\/\/.*?)\1/gi;
+  let match;
+  while ((match = re.exec(html))) urls.push(decodeEntities(match[2]));
+  return urls;
+}
+
+function extractUrlAttributes(value) {
+  const text = decodeEntities(value);
+  const urls = [];
+  const re = /\burl=(["'])(https?:\/\/.*?)\1/gi;
+  let match;
+  while ((match = re.exec(text))) urls.push(decodeEntities(match[2]));
+  return urls;
+}
+
+function isLikelyMediaUrl(value) {
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.toLowerCase();
+    const pathname = parsed.pathname.toLowerCase();
+    if (host.includes('redgifs.com') && (pathname.includes('/watch/') || pathname.includes('/ifr/'))) return true;
+    if (host === 'i.redd.it' || host === 'preview.redd.it' || host === 'external-preview.redd.it') return true;
+    return VALID_EXT.has(path.extname(pathname));
+  } catch {
+    return false;
+  }
+}
+
+function rssIdToPostId(id, fallbackIndex) {
+  const match = String(id || '').match(/comments\/([a-z0-9]+)/i);
+  return match ? match[1] : `rss-${fallbackIndex + 1}`;
+}
+
+function parseRedditRssFeed(xml) {
+  const entries = [];
+  const entryRe = /<entry\b[\s\S]*?<\/entry>/gi;
+  let match;
+  let index = 0;
+
+  while ((match = entryRe.exec(xml))) {
+    const block = match[0];
+    const title = stripTags(extractTag(block, 'title')) || 'untitled';
+    const id = extractTag(block, 'id');
+    const published = extractTag(block, 'published') || extractTag(block, 'updated');
+    const content = extractTag(block, 'content') || extractTag(block, 'summary');
+    const mediaUrls = [...extractUrlsFromHtml(content), ...extractAtomLinks(block), ...extractUrlAttributes(block)]
+      .filter(isLikelyMediaUrl)
+      .filter((url, idx, arr) => arr.indexOf(url) === idx);
+
+    entries.push({
+      kind: 't3',
+      data: {
+        id: rssIdToPostId(id, index),
+        title,
+        created_utc: published ? Math.floor(new Date(published).getTime() / 1000) : Math.floor(Date.now() / 1000),
+        url: mediaUrls[0] || '',
+        url_overridden_by_dest: mediaUrls[0] || '',
+        _rss_media_urls: mediaUrls,
+      },
+    });
+    index++;
+  }
+
+  return {
+    data: {
+      children: entries,
+      after: null,
+      _source: 'rss',
+    },
+  };
+}
+
+class RedditApiError extends Error {
+  constructor(statusCode, message) {
+    super(message);
+    this.name = 'RedditApiError';
+    this.statusCode = statusCode;
+  }
+}
+
+function redditStatusMessage(statusCode) {
+  if (statusCode === 403) {
+    return 'Reddit blocked the public listing request (HTTP 403). Reddit may now require authorized API access for this listing.';
+  }
+  if (statusCode === 404) return 'Reddit listing not found (HTTP 404).';
+  if (statusCode === 429) return 'Reddit rate limited the request (HTTP 429). Try again later.';
+  return `Reddit API returned HTTP ${statusCode}.`;
 }
 
 // ── RedGIFs helpers ───────────────────────────────────────────
@@ -255,7 +408,7 @@ function httpGet(urlStr, timeout, hops = 0, extraHeaders = {}) {
     const parsed = new URL(urlStr);
     const mod = parsed.protocol === 'https:' ? https : http;
     const req = mod.get(urlStr, {
-      headers: { 'User-Agent': USER_AGENT, ...extraHeaders },
+      headers: { ...DEFAULT_HEADERS, ...extraHeaders },
       timeout,
     }, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 303 || res.statusCode === 307) {
@@ -273,10 +426,10 @@ function httpGet(urlStr, timeout, hops = 0, extraHeaders = {}) {
 }
 
 async function httpGetJson(urlStr) {
-  const res = await httpGet(urlStr, API_TIMEOUT);
+  const res = await httpGet(urlStr, API_TIMEOUT, 0, API_HEADERS);
   if (res.statusCode !== 200) {
     res.resume();
-    throw new Error(`Reddit API returned ${res.statusCode}`);
+    throw new RedditApiError(res.statusCode, redditStatusMessage(res.statusCode));
   }
   return new Promise((resolve, reject) => {
     let data = '';
@@ -287,6 +440,40 @@ async function httpGetJson(urlStr) {
     });
     res.on('error', reject);
   });
+}
+
+async function httpGetText(urlStr, headers = {}) {
+  const res = await httpGet(urlStr, API_TIMEOUT, 0, headers);
+  if (res.statusCode !== 200) {
+    res.resume();
+    throw new RedditApiError(res.statusCode, redditStatusMessage(res.statusCode));
+  }
+  return new Promise((resolve, reject) => {
+    let data = '';
+    res.on('data', (chunk) => (data += chunk));
+    res.on('end', () => resolve(data));
+    res.on('error', reject);
+  });
+}
+
+async function fetchListing(kind, value, after) {
+  const url = buildListingUrl(kind, value, after);
+  try {
+    return await httpGetJson(url);
+  } catch (err) {
+    if (after || !(err instanceof RedditApiError) || ![403, 429].includes(err.statusCode)) throw err;
+
+    const rssUrl = buildRssUrl(kind, value);
+    try {
+      const xml = await httpGetText(rssUrl, RSS_HEADERS);
+      const payload = parseRedditRssFeed(xml);
+      if (payload.data.children.length > 0) return payload;
+    } catch {
+      // Keep the original JSON/API error because it better explains the breakage.
+    }
+
+    throw err;
+  }
 }
 
 // ── SHA256 ──────────────────────────────────────────────────────
@@ -587,14 +774,18 @@ class RedditDownloader {
         await this._waitIfPaused();
         if (this._cancelled) break;
 
-        const url = buildListingUrl(kind, value, after);
         this._log(`Fetching page ${page + 1}...`);
 
         let payload;
         try {
-          payload = await httpGetJson(url);
+          payload = await fetchListing(kind, value, after);
+          if (payload.data?._source === 'rss') {
+            this._log('Reddit JSON was blocked; using limited RSS fallback for this listing');
+          }
         } catch (err) {
           this._log(`API error: ${err.message}`);
+          if (allMedia.length === 0) throw err;
+          this._log('Stopping pagination after API error; downloading media found so far');
           break;
         }
 
@@ -631,6 +822,10 @@ class RedditDownloader {
       }
 
       const total = allMedia.length;
+      if (total === 0) {
+        throw new Error('No downloadable media found. If the log shows HTTP 403, Reddit blocked public listing access for this request.');
+      }
+
       this._log(`Found ${total} media entries`);
       this._sendProgress(0, 0, total, 0);
 
@@ -772,3 +967,8 @@ class RedditDownloader {
 }
 
 module.exports = RedditDownloader;
+module.exports._internals = {
+  getMediaEntries,
+  parseRedditRssFeed,
+  redditStatusMessage,
+};
