@@ -84,3 +84,5 @@ dist/
 
 # Windows build artifacts
 build/RedditDownloaderWin/
+.worktrees/
+.superpowers/
