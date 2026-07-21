@@ -63,6 +63,9 @@ test('normalizes Reddit post, RedGIFs user, and Erome account URLs', () => {
     assert.deepEqual(_internals.normalizeInput('https://www.facebook.com/photo?fbid=1083587167330441&set=a.214939680861865'), {
         source: 'facebook', kind: 'post', value: '1083587167330441', displayName: 'facebook_1083587167330441', url: 'https://www.facebook.com/photo?fbid=1083587167330441&set=a.214939680861865'
     });
+    assert.deepEqual(_internals.normalizeInput('https://www.facebook.com/glowfashion.athens/reels/'), {
+        source: 'facebook', kind: 'collection', value: 'glowfashion.athens_reels', displayName: 'facebook_glowfashion.athens_reels', url: 'https://www.facebook.com/glowfashion.athens/reels/'
+    });
 });
 
 test('RedGIFs API user payload is converted to downloadable videos', () => {
@@ -132,5 +135,19 @@ test('Facebook HTML parser extracts public image and video media', () => {
     assert.deepEqual(media.map((item) => [item.postId, item.title, item.entry.url, item.entry.kind]), [
         ['1083587167330441', 'facebook-media', 'https://scontent.xx.fbcdn.net/v/t39.30808-6/photo.jpg?_nc_cat=1&ccb=1-7', 'photo'],
         ['1083587167330441', 'facebook-media', 'https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4?_nc_cat=1&ccb=1-7', 'video'],
+    ]);
+});
+
+test('Facebook reel collection parser keeps multiple playable reel videos', () => {
+    const html = `
+      <script>{"browser_native_hd_url":"https:\\/\\/video.xx.fbcdn.net\\/first.mp4?token=1","browser_native_sd_url":"https:\\/\\/video.xx.fbcdn.net\\/first-sd.mp4?token=1"}</script>
+      <script>{"browser_native_hd_url":"https:\\/\\/video.xx.fbcdn.net\\/second.mp4?token=2"}</script>`;
+    const single = _internals.mediaFromFacebookHtml(html, '27300808292885948', 'https://www.facebook.com/reel/27300808292885948');
+    assert.deepEqual(single.map((item) => item.entry.url), ['https://video.xx.fbcdn.net/first.mp4?token=1']);
+
+    const collection = _internals.mediaFromFacebookHtml(html, 'glowfashion.athens_reels', 'https://www.facebook.com/glowfashion.athens/reels/', { collection: true });
+    assert.deepEqual(collection.map((item) => item.entry.url), [
+        'https://video.xx.fbcdn.net/first.mp4?token=1',
+        'https://video.xx.fbcdn.net/second.mp4?token=2',
     ]);
 });

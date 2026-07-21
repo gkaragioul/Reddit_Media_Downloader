@@ -32,6 +32,19 @@ const RSS_HEADERS = {
   'Accept-Language': 'en-US,en;q=0.9',
   'Cache-Control': 'no-cache',
 };
+const FACEBOOK_HEADERS = {
+  'User-Agent': USER_AGENT,
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Cache-Control': 'no-cache',
+  'Upgrade-Insecure-Requests': '1',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-User': '?1',
+  'Sec-Fetch-Dest': 'document',
+  // Anonymous public-page requests to Facebook can return HTTP 400 without basic browser cookies.
+  'Cookie': 'wd=1365x768; locale=en_US; datr=anonymous;',
+};
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 const VIDEO_EXT = new Set(['.gif', '.mp4', '.webm', '.mov', '.m4v']);
 const AUDIO_EXT = new Set(['.mp3', '.m4a', '.aac', '.ogg', '.wav', '.flac']);
@@ -80,6 +93,10 @@ function normalizeInput(text) {
     }
 
     if (host.endsWith('facebook.com') || host.endsWith('fb.watch')) {
+      if (host.endsWith('facebook.com') && parts.length >= 2 && parts[1].toLowerCase() === 'reels') {
+        const value = sanitizeFilename(`${parts[0]}_reels`);
+        return { source: 'facebook', kind: 'collection', value, displayName: `facebook_${value}`, url: trimmed };
+      }
       const id = parsed.searchParams.get('fbid') || parsed.searchParams.get('v') || parts.filter(Boolean).pop() || 'facebook-media';
       return { source: 'facebook', kind: 'post', value: sanitizeFilename(id), displayName: `facebook_${sanitizeFilename(id)}`, url: trimmed };
     }
@@ -593,9 +610,26 @@ function extractEromeAlbumLinks(html, baseUrl) {
   return links.filter((url, idx, arr) => arr.indexOf(url) === idx);
 }
 
-function extractFacebookMediaUrls(html) {
-  const text = decodeEntities(String(html || '').replace(/\\\//g, '/').replace(/\\u0025/g, '%').replace(/\\u0026/g, '&'));
+function extractFacebookMediaUrls(html, options = {}) {
+  const raw = String(html || '');
+  const text = decodeEntities(raw.replace(/\\\//g, '/').replace(/\\u0025/g, '%').replace(/\\u0026/g, '&'));
   const urls = [];
+
+  function addJsonEscapedUrlForKey(key) {
+    const re = new RegExp(`"${key}"\\s*:\\s*"(https?:\\\\/\\\\/.*?)"`, 'gi');
+    let m;
+    while ((m = re.exec(raw))) urls.push(decodeEntities(m[1].replace(/\\\//g, '/').replace(/\\u0025/g, '%').replace(/\\u0026/g, '&')));
+  }
+
+  // Prefer Facebook's explicit playable video URL fields. The page often contains many
+  // unrelated mp4 variants; these keys usually identify the actual reel/video.
+  addJsonEscapedUrlForKey('browser_native_hd_url');
+  if (urls.length === 0) addJsonEscapedUrlForKey('browser_native_sd_url');
+  if (urls.length === 0) addJsonEscapedUrlForKey('playable_url_quality_hd');
+  if (urls.length === 0) addJsonEscapedUrlForKey('playable_url');
+  const preferredVideoCount = urls.length;
+  const preferredVideoUrls = urls.slice();
+
   const metaRe = /<meta\b[^>]*(?:property|name)=(["'])(?:og:image|og:video|twitter:image|twitter:player:stream)\1[^>]*\bcontent=(["'])(https?:\/\/.*?)\2/gi;
   let match;
   while ((match = metaRe.exec(text))) urls.push(decodeEntities(match[3]));
@@ -615,14 +649,23 @@ function extractFacebookMediaUrls(html) {
     urls.push(url);
   }
 
-  return urls
+  const cleaned = (preferredVideoCount > 0 ? preferredVideoUrls : urls)
     .map((url) => url.replace(/\?.*$/, (qs) => qs.replace(/&amp;/g, '&')))
     .filter(isLikelyMediaUrl)
     .filter((url, idx, arr) => arr.indexOf(url) === idx);
+
+  if (preferredVideoCount > 0 && !options.collection) {
+    const videos = cleaned.filter((url) => mediaKindForUrl(url) === 'video');
+    return videos.length ? [videos[0]] : [];
+  }
+  if (preferredVideoCount > 0 && options.collection) {
+    return cleaned.filter((url) => mediaKindForUrl(url) === 'video');
+  }
+  return cleaned;
 }
 
-function mediaFromFacebookHtml(html, postId, pageUrl) {
-  return extractFacebookMediaUrls(html).map((url, idx) => ({
+function mediaFromFacebookHtml(html, postId, pageUrl, options = {}) {
+  return extractFacebookMediaUrls(html, options).map((url, idx) => ({
     dateStr: formatDate(Date.now() / 1000),
     postId: sanitizeFilename(postId || 'facebook'),
     title: 'facebook-media',
@@ -633,13 +676,21 @@ function mediaFromFacebookHtml(html, postId, pageUrl) {
 
 async function fetchFacebookMedia(inputInfo, log = () => {}) {
   if (!inputInfo.url) throw new Error('Facebook downloads require a Facebook media URL.');
+  let pageUrl = inputInfo.url;
+  try {
+    const parsed = new URL(pageUrl);
+    const parts = parsed.pathname.split('/').filter(Boolean);
+    if (parts[0]?.toLowerCase() === 'reel' && parts[1]) {
+      pageUrl = `https://www.facebook.com/watch/?v=${encodeURIComponent(parts[1])}`;
+      log('Facebook reel URL detected; using watch URL fallback');
+    }
+  } catch {}
   log('Fetching Facebook media page...');
-  const html = await httpGetText(inputInfo.url, {
-    ...DEFAULT_HEADERS,
-    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  const html = await httpGetText(pageUrl, {
+    ...FACEBOOK_HEADERS,
     Referer: 'https://www.facebook.com/',
   });
-  return mediaFromFacebookHtml(html, inputInfo.value, inputInfo.url);
+  return mediaFromFacebookHtml(html, inputInfo.value, pageUrl, { collection: inputInfo.kind === 'collection' });
 }
 
 async function fetchRedgifsMedia(inputInfo, log = () => {}) {
@@ -701,7 +752,7 @@ function httpGet(urlStr, timeout, hops = 0, extraHeaders = {}) {
       headers: { ...DEFAULT_HEADERS, ...extraHeaders },
       timeout,
     }, (res) => {
-      if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 303 || res.statusCode === 307) {
+      if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 303 || res.statusCode === 307 || res.statusCode === 308) {
         const location = res.headers.location;
         res.resume();
         if (!location) return reject(new Error('Redirect with no location'));
@@ -736,7 +787,7 @@ async function httpGetText(urlStr, headers = {}) {
   const res = await httpGet(urlStr, API_TIMEOUT, 0, headers);
   if (res.statusCode !== 200) {
     res.resume();
-    throw new RedditApiError(res.statusCode, redditStatusMessage(res.statusCode));
+    throw new RedditApiError(res.statusCode, `HTTP ${res.statusCode} for ${new URL(urlStr).hostname}`);
   }
   return new Promise((resolve, reject) => {
     let data = '';
