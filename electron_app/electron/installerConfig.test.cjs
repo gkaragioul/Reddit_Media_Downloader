@@ -5,14 +5,19 @@ const path = require('node:path');
 const packageJson = require(path.join('..', 'package.json'));
 
 test('package version matches the release train', () => {
-    assert.equal(packageJson.version, '4.2.11');
+    assert.equal(packageJson.version, '4.3.0');
 });
 
 test('windows installer artifact uses repository product name', () => {
     assert.equal(packageJson.license, 'GPL-3.0-or-later');
-    assert.equal(packageJson.build.productName, 'Reddit Media Downloader');
-    assert.equal(packageJson.build.nsis.shortcutName, 'Reddit Media Downloader');
-    assert.equal(packageJson.build.nsis.artifactName, 'Reddit-Media-Downloader-Setup.${ext}');
+    assert.equal(packageJson.build.productName, 'GK Media Downloader');
+    assert.equal(packageJson.build.nsis.shortcutName, 'GK Media Downloader');
+    assert.equal(packageJson.build.nsis.artifactName, 'GK-Media-Downloader-Setup.${ext}');
+});
+
+test('linux build is portable and installer-free', () => {
+    assert.deepEqual(packageJson.build.linux.target, ['dir', 'tar.gz', 'AppImage']);
+    assert.equal(packageJson.build.linux.artifactName, 'GK-Media-Downloader-Linux-${arch}.${ext}');
 });
 
 test('app has no updater configuration or dependencies', () => {

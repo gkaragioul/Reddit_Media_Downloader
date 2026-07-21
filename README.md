@@ -1,100 +1,70 @@
-
-
-https://github.com/user-attachments/assets/34691703-eeae-4040-ab24-1379d7f6f248
-
 <div align="center">
 
-<h1>Reddit Media Downloader</h1>
+# GK Media Downloader
 
-<hr>
+**Portable Linux media downloader for Reddit, RedGIFs, and Erome accounts/posts.**
 
-<p>
-  <strong>GPL-licensed Windows desktop app for downloading public Reddit photos and videos.</strong><br>
-  <em>Batch profile and subreddit downloads with duplicate detection, Reddit video audio muxing, and organized photo/video folders.</em>
-</p>
-
-<p>
-  <a href="https://github.com/gkaragioul/Reddit_Media_Downloader/releases/latest">Download</a> &bull;
-  <a href="#features">Features</a> &bull;
-  <a href="#requirements">Requirements</a> &bull;
-  <a href="#building">Building</a> &bull;
-  <a href="#license">License</a>
-</p>
-
-<hr>
+Download images, GIFs, videos, and Reddit videos with audio into one flat media folder per source.
 
 </div>
 
 ## Features
 
-- **Multiple input formats**: Enter a username, `u/username`, `r/subreddit`, or a full Reddit URL.
-- **Photo and video downloads**: Extract images, videos, GIFs, galleries, video galleries, and crosspost media.
-- **RedGIFs support**: Download RedGIFs media embedded in Reddit posts.
-- **Reddit video support**: Mux Reddit DASH video and audio streams through bundled FFmpeg.
-- **Media type filter**: Choose videos only, photos only, or both.
-- **Smart organization**: Save into separate `Photos/` and `Videos/` folders.
-- **Duplicate detection**: Skip already-downloaded files using SHA256 content hashing.
-- **Pause, resume, and cancel**: Keep long downloads controllable.
+- **Reddit support**: users, subreddits, and individual post URLs.
+- **Reddit OAuth option**: add client ID/secret in Settings to use `oauth.reddit.com` when public Reddit listings return HTTP 403.
+- **RedGIFs support**: full profile pagination and single RedGIFs post URLs.
+- **Erome support**: account pages and album URLs.
+- **Flat output**: all downloaded media goes into one folder; no `Photos/`, `Videos/`, or `Audio/` subfolders.
+- **Video audio**: bundled FFmpeg handles Reddit HLS/audio muxing when available.
+- **Controls**: pause, resume, cancel, open output folder, and save logs.
+- **Portable Linux packaging**: AppImage, tar.gz, and unpacked app folder; no installer required.
 
 ## Usage
 
-1. Launch Reddit Media Downloader.
-2. Enter a Reddit username, profile URL, or subreddit: `username`, `u/username`, `r/subreddit`, or `https://www.reddit.com/user/username/`.
-3. Choose the media filter in Settings.
+1. Launch **GK Media Downloader**.
+2. Paste a supported input:
+   - `u/username`
+   - `r/subreddit`
+   - `https://www.reddit.com/r/.../comments/<id>/...`
+   - `https://www.redgifs.com/users/<name>`
+   - `https://www.redgifs.com/watch/<slug>`
+   - `https://www.erome.com/<name>`
+   - `https://www.erome.com/a/<album>`
+3. If Reddit returns HTTP 403, create a Reddit app at `https://www.reddit.com/prefs/apps` and enter the client ID/secret in Settings.
 4. Click **Start**.
-5. Files are saved to `~/Downloads/<username or subreddit>/`.
 
 ## Output
 
+Downloaded files are saved flat under `~/Downloads/<source>/`:
+
 ```text
-~/Downloads/
-  username/
-    Photos/
-      20260120_abc123_post-title_001.jpg
-    Videos/
-      20260118_ghi789_video-post_001.mp4
-    index.json
+~/Downloads/redgifs_exampleuser/
+  20260722_firstslug_redgifs-exampleuser_001.mp4
+  20260722_secondslug_redgifs-exampleuser_001.mp4
+  index.json
 ```
-
-## Requirements
-
-- Windows 10 or 11.
-- Internet access for Reddit, RedGIFs, and supported media hosts.
-- Enough free disk space for downloaded media and temporary video muxing files.
-
-## Responsible Use
-
-Reddit Media Downloader is intended for lawful personal archiving and organization of public media that you have the right or permission to download.
-
-You are responsible for complying with Reddit's terms, RedGIFs' terms, copyright law, privacy rights, and any local rules that apply to the content you download. Downloaded media remains owned by its respective rightsholders. This project is not affiliated with, endorsed by, or sponsored by Reddit, RedGIFs, or any media host.
 
 ## Building
 
 ```bash
 cd electron_app
 npm install
-npm run electron:dev
+npm test
+npm run lint
+npm run build
+npm run electron:build -- --linux
 ```
 
-Create the Windows installer:
+Linux artifacts are written to `electron_app/dist-electron/`:
 
-```bash
-cd electron_app
-npm run dist
-```
+- `GK-Media-Downloader-Linux-x64.tar.gz`
+- `GK-Media-Downloader-Linux-x86_64.AppImage`
+- `linux-unpacked/`
 
-The NSIS installer is written to `electron_app/dist-electron/`.
+## Responsible use
 
-## Updates
-
-Reddit Media Downloader does not include update checks, update prompts, automatic installer downloads, or any app-managed GitHub release flow. The installed app never offers updates.
+GK Media Downloader is intended for lawful personal archiving and organization of media that you have the right or permission to download. You are responsible for complying with Reddit, RedGIFs, Erome, copyright, privacy, and local rules. This project is not affiliated with, endorsed by, or sponsored by Reddit, RedGIFs, Erome, or any media host.
 
 ## License
 
-Reddit Media Downloader is free software released under the GNU General Public License v3.0 or later. You may use, study, share, and modify it under the terms of the GPL.
-
-Windows installers include a bundled GPL-enabled FFmpeg build through `ffmpeg-static`; the corresponding application source is available in this repository and in the source archive for each tagged release. The installer license screen includes the GPL text and a short application notice about responsible use.
-
-See [LICENSE](LICENSE) for the full GPL text and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled third-party notices.
-
-For licensing inquiries, see the Contact section of https://github.com/gkaragioul.
+GPL-3.0-or-later. Bundled third-party components retain their own license notices, including the GPL-enabled FFmpeg build used for video muxing.

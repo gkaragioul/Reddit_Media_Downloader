@@ -1,8 +1,8 @@
 {
   "name": "gkmd",
   "private": true,
-  "version": "4.2.11",
-  "description": "Reddit Media Downloader - Download media from Reddit profiles and subreddits",
+  "version": "4.3.0",
+  "description": "GK Media Downloader - portable Linux media downloader for Reddit, RedGIFs, and Erome accounts/posts",
   "author": "George Karagioules",
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -18,8 +18,8 @@
     "dist": "npm run electron:build"
   },
   "build": {
-    "appId": "com.gkmd.app",
-    "productName": "Reddit Media Downloader",
+    "appId": "com.gkmedia.downloader",
+    "productName": "GK Media Downloader",
     "toolsets": {
       "winCodeSign": "1.1.0"
     },
@@ -44,9 +44,9 @@
       "installerSidebar": null,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Reddit Media Downloader",
+      "shortcutName": "GK Media Downloader",
       "runAfterFinish": false,
-      "artifactName": "Reddit-Media-Downloader-Setup.${ext}"
+      "artifactName": "GK-Media-Downloader-Setup.${ext}"
     },
     "files": [
       "dist/**/*",
@@ -70,7 +70,17 @@
     ],
     "asarUnpack": [
       "node_modules/ffmpeg-static/**"
-    ]
+    ],
+    "linux": {
+      "target": [
+        "dir",
+        "tar.gz",
+        "AppImage"
+      ],
+      "category": "Utility",
+      "artifactName": "GK-Media-Downloader-Linux-${arch}.${ext}",
+      "icon": "assets/icon.png"
+    }
   },
   "dependencies": {
     "ffmpeg-static": "^5.3.0",

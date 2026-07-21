@@ -58,6 +58,8 @@ export default function App() {
     skipDuplicates: true,
     requestDelay: 0.5,
     mediaFilter: 'both' as 'both' | 'photos' | 'videos',
+    redditClientId: '',
+    redditClientSecret: '',
   });
 
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -150,7 +152,7 @@ export default function App() {
             {/* Green dot */}
             <circle cx="210" cy="194" r="10" fill="#4ade80" />
           </svg>
-          <span className="text-[11px] font-medium text-zinc-400 select-none">Reddit Media Downloader</span>
+          <span className="text-[11px] font-medium text-zinc-400 select-none">GK Media Downloader</span>
         </div>
       </header>
 
@@ -163,7 +165,7 @@ export default function App() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="u/username or r/subreddit"
+            placeholder="Reddit, RedGIFs, or Erome account/post URL"
             disabled={isDownloading}
             spellCheck={false}
             className="flex-1 h-10 px-3.5 bg-zinc-800 border border-zinc-600/50 rounded-lg text-[13px] text-zinc-100 placeholder:text-zinc-400 focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/20 transition-all disabled:opacity-40 outline-none"
@@ -262,7 +264,7 @@ export default function App() {
 
           {/* Settings panel */}
           {showSettings && (
-            <div className="absolute inset-0 top-6 bg-zinc-800 border border-zinc-600/40 rounded-lg p-4 z-10 flex flex-col gap-4">
+            <div className="absolute inset-0 top-6 bg-zinc-800 border border-zinc-600/40 rounded-lg p-4 z-10 flex flex-col gap-4 overflow-y-auto">
               <div className="flex items-center justify-between">
                 <span className="text-[13px] font-medium text-zinc-200">Settings</span>
                 <button
@@ -314,6 +316,31 @@ export default function App() {
                   className="flex-1 h-1 bg-zinc-700 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
                 />
                 <span className="text-[11px] text-zinc-400 tabular-nums w-8 text-right">{settings.requestDelay}s</span>
+              </div>
+
+              <div className="pt-3 border-t border-zinc-700/70 space-y-2">
+                <div>
+                  <span className="text-[12px] text-zinc-300 font-medium">Reddit OAuth</span>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">
+                    Optional, but recommended when Reddit returns HTTP 403 for public listings.
+                  </p>
+                </div>
+                <input
+                  type="text"
+                  value={settings.redditClientId}
+                  onChange={(e) => setSettings((s) => ({ ...s, redditClientId: e.target.value }))}
+                  placeholder="Reddit client ID"
+                  spellCheck={false}
+                  className="w-full h-8 px-2.5 bg-zinc-900 border border-zinc-600/50 rounded-md text-[11px] text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-indigo-500/60"
+                />
+                <input
+                  type="password"
+                  value={settings.redditClientSecret}
+                  onChange={(e) => setSettings((s) => ({ ...s, redditClientSecret: e.target.value }))}
+                  placeholder="Reddit client secret"
+                  spellCheck={false}
+                  className="w-full h-8 px-2.5 bg-zinc-900 border border-zinc-600/50 rounded-md text-[11px] text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-indigo-500/60"
+                />
               </div>
             </div>
           )}
@@ -380,7 +407,7 @@ export default function App() {
       {showAbout && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-zinc-800 border border-zinc-600/60 rounded-xl w-[420px] max-h-[360px] p-6 flex flex-col gap-4 shadow-2xl">
-            <h2 className="text-[16px] font-bold text-zinc-100">About Reddit Media Downloader</h2>
+            <h2 className="text-[16px] font-bold text-zinc-100">About GK Media Downloader</h2>
             <div className="flex-1 overflow-y-auto space-y-3 text-[12px]">
               <div>
                 <span className="text-zinc-300 font-semibold">Developer:</span>{' '}

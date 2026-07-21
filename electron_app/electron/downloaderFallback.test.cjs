@@ -33,3 +33,78 @@ test('RSS fallback parses direct media URLs into Reddit-like posts', () => {
 test('403 message explains Reddit blocked the public listing', () => {
     assert.match(_internals.redditStatusMessage(403), /blocked the public listing request/);
 });
+
+test('RSS animated GIF entries are video-compatible for the videos-only filter', () => {
+    const entries = _internals.getMediaEntries({
+        _rss_media_urls: ['https://i.redd.it/animated-example.gif'],
+    });
+
+    assert.deepEqual(entries.map((entry) => [entry.url, entry.kind]), [
+        ['https://i.redd.it/animated-example.gif', 'video'],
+    ]);
+});
+
+test('normalizes Reddit post, RedGIFs user, and Erome account URLs', () => {
+    assert.deepEqual(_internals.normalizeInput('https://www.reddit.com/r/pics/comments/abc123/title/'), {
+        source: 'reddit', kind: 'post', value: 'abc123', displayName: 'reddit_post_abc123', url: 'https://www.reddit.com/r/pics/comments/abc123/title/'
+    });
+    assert.deepEqual(_internals.normalizeInput('https://www.redgifs.com/users/ExampleUser'), {
+        source: 'redgifs', kind: 'user', value: 'ExampleUser', displayName: 'redgifs_ExampleUser', url: 'https://www.redgifs.com/users/ExampleUser'
+    });
+    assert.deepEqual(_internals.normalizeInput('https://www.erome.com/a/exampleuser'), {
+        source: 'erome', kind: 'album', value: 'exampleuser', displayName: 'erome_exampleuser', url: 'https://www.erome.com/a/exampleuser'
+    });
+    assert.deepEqual(_internals.normalizeInput('https://www.erome.com/exampleuser'), {
+        source: 'erome', kind: 'user', value: 'exampleuser', displayName: 'erome_exampleuser', url: 'https://www.erome.com/exampleuser'
+    });
+});
+
+test('RedGIFs API user payload is converted to downloadable videos', () => {
+    const payload = {
+        gifs: [
+            { id: 'firstslug', createDate: 1760000000, urls: { hd: 'https://media.redgifs.com/first.mp4' } },
+            { id: 'secondslug', createDate: 1760000100, urls: { sd: 'https://media.redgifs.com/second.mp4' } },
+        ],
+        page: 1,
+        pages: 1,
+    };
+
+    const media = _internals.mediaFromRedgifsPayload(payload, 'ExampleUser');
+    assert.deepEqual(media.map((item) => [item.postId, item.title, item.entry.url, item.entry.kind]), [
+        ['firstslug', 'redgifs-ExampleUser', 'https://media.redgifs.com/first.mp4', 'video'],
+        ['secondslug', 'redgifs-ExampleUser', 'https://media.redgifs.com/second.mp4', 'video'],
+    ]);
+});
+
+test('Erome album HTML parser extracts images and videos with stable filenames', () => {
+    const html = `
+      <html><head><title>My Album - EroMe</title></head><body>
+        <img data-src="https://s1.erome.com/abc/image-one.jpg">
+        <source src="https://v1.erome.com/abc/video-one.mp4" type="video/mp4">
+        <a href="/a/otheralbum">Other album</a>
+      </body></html>`;
+
+    const media = _internals.mediaFromEromeAlbumHtml(html, 'album123', 'https://www.erome.com/a/album123');
+    assert.deepEqual(media.map((item) => [item.postId, item.title, item.entry.url, item.entry.kind]), [
+        ['album123', 'My-Album', 'https://s1.erome.com/abc/image-one.jpg', 'photo'],
+        ['album123', 'My-Album', 'https://v1.erome.com/abc/video-one.mp4', 'video'],
+    ]);
+});
+
+test('Reddit OAuth listing URLs use oauth.reddit.com without public .json listing endpoints', () => {
+    assert.equal(
+        _internals.buildRedditOAuthListingUrl('user', 'ExampleUser', null),
+        'https://oauth.reddit.com/user/ExampleUser/submitted?limit=100&raw_json=1'
+    );
+    assert.equal(
+        _internals.buildRedditOAuthListingUrl('post', 'abc123', null),
+        'https://oauth.reddit.com/comments/abc123?raw_json=1'
+    );
+});
+
+test('download layout is flat: all media goes into one folder without type subfolders', () => {
+    assert.deepEqual(_internals.outputSubfolders(), []);
+    assert.equal(_internals.outputFolderForEntry({ kind: 'photo', url: 'https://x.test/a.jpg' }), '.');
+    assert.equal(_internals.outputFolderForEntry({ kind: 'video', url: 'https://x.test/a.mp4' }), '.');
+    assert.equal(_internals.outputFolderForEntry({ kind: 'audio', url: 'https://x.test/a.mp3' }), '.');
+});

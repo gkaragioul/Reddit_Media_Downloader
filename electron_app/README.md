@@ -1,73 +1,64 @@
-# React + TypeScript + Vite
+# GK Media Downloader
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Portable Linux-first desktop app for downloading media from Reddit, RedGIFs, and Erome accounts/posts.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Reddit users, subreddits, and individual post URLs.
+- Optional Reddit OAuth credentials for listings that Reddit blocks with HTTP 403.
+- RedGIFs profile and single-post downloads.
+- Erome account and album downloads.
+- Images, GIFs, videos, and audio-capable video downloads.
+- Reddit video audio handling through bundled FFmpeg/HLS and mux fallback.
+- Flat output: all media for a source is saved in one folder, without `Photos/`, `Videos/`, or `Audio/` subfolders.
+- Duplicate skipping by filename and optional SHA256 checks.
+- Pause, resume, cancel, logs, and open-output-folder controls.
 
-## React Compiler
+## Usage
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Launch **GK Media Downloader**.
+2. Paste a supported URL or Reddit shorthand:
+   - `u/username`
+   - `r/subreddit`
+   - `https://www.reddit.com/r/.../comments/<id>/...`
+   - `https://www.redgifs.com/users/<name>`
+   - `https://www.redgifs.com/watch/<slug>`
+   - `https://www.erome.com/<name>`
+   - `https://www.erome.com/a/<album>`
+3. Optional: add Reddit OAuth client ID/secret in Settings if Reddit returns HTTP 403.
+4. Click **Start**.
 
-## Expanding the ESLint configuration
+## Output
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Files are saved flat under the source folder:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```text
+~/Downloads/redgifs_exampleuser/
+  20260722_firstslug_redgifs-exampleuser_001.mp4
+  20260722_secondslug_redgifs-exampleuser_001.mp4
+  index.json
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Linux portable build
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm test
+npm run lint
+npm run build
+npm run electron:build -- --linux
 ```
+
+Artifacts are written to `dist-electron/`:
+
+- `GK-Media-Downloader-Linux-x64.tar.gz`
+- `GK-Media-Downloader-Linux-x86_64.AppImage`
+- `linux-unpacked/`
+
+## Responsible use
+
+Use this app only for media you have the right or permission to download, and comply with Reddit, RedGIFs, Erome, copyright, privacy, and local rules.
+
+## License
+
+GPL-3.0-or-later. Bundled third-party components retain their own license notices, including the GPL-enabled FFmpeg build used for video muxing.

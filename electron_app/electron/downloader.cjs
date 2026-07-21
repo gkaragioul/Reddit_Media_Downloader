@@ -14,7 +14,7 @@ const os = require('os');
 
 // ── Constants ──────────────────────────────────────────────────
 
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) RedditMediaDownloader/4.2.11 Chrome/120.0 Safari/537.36';
+const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) GKMediaDownloader/4.3.0 Chrome/120.0 Safari/537.36';
 const DEFAULT_HEADERS = {
   'User-Agent': USER_AGENT,
   'Accept': '*/*',
@@ -32,9 +32,12 @@ const RSS_HEADERS = {
   'Accept-Language': 'en-US,en;q=0.9',
   'Cache-Control': 'no-cache',
 };
-const VALID_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.webm']);
-const VIDEO_EXT = new Set(['.mp4', '.webm']);
+const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
+const VIDEO_EXT = new Set(['.gif', '.mp4', '.webm', '.mov', '.m4v']);
+const AUDIO_EXT = new Set(['.mp3', '.m4a', '.aac', '.ogg', '.wav', '.flac']);
+const VALID_EXT = new Set([...IMAGE_EXT, ...VIDEO_EXT, ...AUDIO_EXT]);
 const MAX_PAGES = 12;
+const MAX_REDGIFS_PAGES = 1000;
 const DOWNLOAD_TIMEOUT = 45_000;
 const API_TIMEOUT = 30_000;
 const MAX_REDIRECTS = 5;
@@ -43,21 +46,43 @@ const MAX_REDIRECTS = 5;
 
 function normalizeInput(text) {
   const trimmed = (text || '').trim();
-  if (!trimmed) throw new Error('Please enter a username, subreddit, or Reddit URL.');
+  if (!trimmed) throw new Error('Please enter a Reddit, RedGIFs, or Erome account/post URL.');
 
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     const parsed = new URL(trimmed);
+    const host = parsed.hostname.replace(/^www\./, '').toLowerCase();
     const parts = parsed.pathname.split('/').filter(Boolean);
-    if (parts.length >= 2 && ['user', 'u'].includes(parts[0].toLowerCase()))
-      return { kind: 'user', value: parts[1] };
-    if (parts.length >= 2 && parts[0].toLowerCase() === 'r')
-      return { kind: 'subreddit', value: parts[1] };
-    throw new Error('Unsupported Reddit URL format.');
+
+    if (host.endsWith('reddit.com')) {
+      if (parts.length >= 4 && parts[0].toLowerCase() === 'r' && parts[2].toLowerCase() === 'comments') {
+        return { source: 'reddit', kind: 'post', value: parts[3], displayName: `reddit_post_${parts[3]}`, url: trimmed };
+      }
+      if (parts.length >= 2 && ['user', 'u'].includes(parts[0].toLowerCase()))
+        return { source: 'reddit', kind: 'user', value: parts[1], displayName: parts[1], url: trimmed };
+      if (parts.length >= 2 && parts[0].toLowerCase() === 'r')
+        return { source: 'reddit', kind: 'subreddit', value: parts[1], displayName: `r_${parts[1]}`, url: trimmed };
+    }
+
+    if (host.endsWith('redgifs.com')) {
+      if (parts.length >= 2 && ['users', 'user'].includes(parts[0].toLowerCase()))
+        return { source: 'redgifs', kind: 'user', value: parts[1], displayName: `redgifs_${parts[1]}`, url: trimmed };
+      if (parts.length >= 2 && ['watch', 'ifr'].includes(parts[0].toLowerCase()))
+        return { source: 'redgifs', kind: 'post', value: parts[1].toLowerCase(), displayName: `redgifs_${parts[1].toLowerCase()}`, url: trimmed };
+    }
+
+    if (host.endsWith('erome.com')) {
+      if (parts.length >= 2 && parts[0].toLowerCase() === 'a')
+        return { source: 'erome', kind: 'album', value: parts[1], displayName: `erome_${parts[1]}`, url: trimmed };
+      if (parts.length >= 1)
+        return { source: 'erome', kind: 'user', value: parts[0], displayName: `erome_${parts[0]}`, url: trimmed };
+    }
+
+    throw new Error('Unsupported URL format. Use Reddit, RedGIFs, or Erome account/post URLs.');
   }
 
-  if (trimmed.toLowerCase().startsWith('u/')) return { kind: 'user', value: trimmed.slice(2) };
-  if (trimmed.toLowerCase().startsWith('r/')) return { kind: 'subreddit', value: trimmed.slice(2) };
-  return { kind: 'user', value: trimmed };
+  if (trimmed.toLowerCase().startsWith('u/')) return { source: 'reddit', kind: 'user', value: trimmed.slice(2), displayName: trimmed.slice(2), url: null };
+  if (trimmed.toLowerCase().startsWith('r/')) return { source: 'reddit', kind: 'subreddit', value: trimmed.slice(2), displayName: `r_${trimmed.slice(2)}`, url: null };
+  return { source: 'reddit', kind: 'user', value: trimmed, displayName: trimmed, url: null };
 }
 
 function sanitizeFilename(name) {
@@ -66,10 +91,19 @@ function sanitizeFilename(name) {
 }
 
 function buildListingUrl(kind, value, after) {
+  if (kind === 'post') return `https://www.reddit.com/comments/${encodeURIComponent(value)}.json?raw_json=1`;
   const base = kind === 'user'
     ? `https://www.reddit.com/user/${value}/submitted/.json`
     : `https://www.reddit.com/r/${value}/new/.json`;
   return base + '?limit=100&raw_json=1' + (after ? `&after=${after}` : '');
+}
+
+function buildRedditOAuthListingUrl(kind, value, after) {
+  if (kind === 'post') return `https://oauth.reddit.com/comments/${encodeURIComponent(value)}?raw_json=1`;
+  const base = kind === 'user'
+    ? `https://oauth.reddit.com/user/${encodeURIComponent(value)}/submitted`
+    : `https://oauth.reddit.com/r/${encodeURIComponent(value)}/new`;
+  return base + '?limit=100&raw_json=1' + (after ? `&after=${encodeURIComponent(after)}` : '');
 }
 
 function buildRssUrl(kind, value) {
@@ -268,10 +302,26 @@ function isLikelyMediaUrl(value) {
     const pathname = parsed.pathname.toLowerCase();
     if (host.includes('redgifs.com') && (pathname.includes('/watch/') || pathname.includes('/ifr/'))) return true;
     if (host === 'i.redd.it' || host === 'preview.redd.it' || host === 'external-preview.redd.it') return true;
+    if (host.includes('erome.com')) return VALID_EXT.has(path.extname(pathname));
     return VALID_EXT.has(path.extname(pathname));
   } catch {
     return false;
   }
+}
+
+function mediaKindForUrl(url) {
+  const ext = detectExt(url, '');
+  if (AUDIO_EXT.has(ext)) return 'audio';
+  if (VIDEO_EXT.has(ext)) return 'video';
+  return 'photo';
+}
+
+function outputSubfolders() {
+  return [];
+}
+
+function outputFolderForEntry(_entry) {
+  return '.';
 }
 
 function rssIdToPostId(id, fallbackIndex) {
@@ -376,7 +426,6 @@ async function getRedgifsVideoUrl(slug) {
   try {
     const url = `https://api.redgifs.com/v2/gifs/${slug}`;
     const res = await new Promise((resolve, reject) => {
-      const parsed = new URL(url);
       const req = https.get(url, {
         headers: {
           'User-Agent': USER_AGENT,
@@ -398,6 +447,183 @@ async function getRedgifsVideoUrl(slug) {
   } catch {
     return null;
   }
+}
+
+async function httpGetJsonWithHeaders(urlStr, headers = API_HEADERS) {
+  const res = await httpGet(urlStr, API_TIMEOUT, 0, headers);
+  if (res.statusCode !== 200) {
+    res.resume();
+    throw new RedditApiError(res.statusCode, `HTTP ${res.statusCode} for ${urlStr}`);
+  }
+  return new Promise((resolve, reject) => {
+    let data = '';
+    res.on('data', (chunk) => (data += chunk));
+    res.on('end', () => { try { resolve(JSON.parse(data)); } catch (err) { reject(err); } });
+    res.on('error', reject);
+  });
+}
+
+function httpPostFormJson(urlStr, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(urlStr);
+    const payload = Buffer.from(new URLSearchParams(body).toString());
+    const req = https.request({
+      protocol: parsed.protocol,
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      method: 'POST',
+      timeout: API_TIMEOUT,
+      headers: {
+        ...DEFAULT_HEADERS,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': payload.length,
+        ...headers,
+      },
+    }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => {
+        try {
+          const json = data ? JSON.parse(data) : {};
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            const err = new Error(json.message || json.error || `HTTP ${res.statusCode}`);
+            err.statusCode = res.statusCode;
+            return reject(err);
+          }
+          resolve(json);
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out')); });
+    req.write(payload);
+    req.end();
+  });
+}
+
+let _redditToken = null;
+let _redditTokenKey = null;
+let _redditTokenExpiry = 0;
+
+async function getRedditAuthHeaders(settings = {}) {
+  const clientId = String(settings.redditClientId || process.env.REDDIT_CLIENT_ID || '').trim();
+  const clientSecret = String(settings.redditClientSecret || process.env.REDDIT_CLIENT_SECRET || '').trim();
+  if (!clientId || !clientSecret) return null;
+
+  const key = `${clientId}:${clientSecret}`;
+  if (_redditToken && _redditTokenKey === key && Date.now() < _redditTokenExpiry) {
+    return { ...API_HEADERS, Authorization: `Bearer ${_redditToken}` };
+  }
+
+  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  const json = await httpPostFormJson('https://www.reddit.com/api/v1/access_token',
+    { grant_type: 'client_credentials' },
+    { Authorization: `Basic ${basic}` });
+  if (!json.access_token) throw new Error('Reddit OAuth did not return an access token.');
+  _redditToken = json.access_token;
+  _redditTokenKey = key;
+  _redditTokenExpiry = Date.now() + Math.max(60, Number(json.expires_in || 3600) - 60) * 1000;
+  return { ...API_HEADERS, Authorization: `Bearer ${_redditToken}` };
+}
+
+function mediaFromRedgifsPayload(payload, username) {
+  const gifs = Array.isArray(payload?.gifs) ? payload.gifs : [];
+  return gifs.map((gif, index) => {
+    const url = gif.urls?.hd || gif.urls?.sd || gif.urls?.poster || '';
+    return {
+      dateStr: formatDate(gif.createDate || gif.published || Date.now() / 1000),
+      postId: sanitizeFilename(gif.id || gif.slug || `redgifs-${index + 1}`),
+      title: sanitizeFilename(`redgifs-${username || 'media'}`),
+      mediaIdx: 1,
+      entry: { url, kind: mediaKindForUrl(url) === 'photo' ? 'video' : mediaKindForUrl(url), audioUrls: [], hlsUrl: null },
+    };
+  }).filter((item) => item.entry.url);
+}
+
+function mediaFromEromeAlbumHtml(html, albumId, albumUrl) {
+  const titleMatch = String(html || '').match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const rawTitle = stripTags(titleMatch?.[1] || albumId || 'erome-album').replace(/\s+-\s+EroMe\s*$/i, '');
+  const title = sanitizeFilename(rawTitle || albumId || 'erome-album');
+  const urls = [];
+  const attrRe = /\b(?:src|data-src|data-video-src|href)=(["'])(https?:\/\/[^"']+)\1/gi;
+  let match;
+  while ((match = attrRe.exec(html || ''))) {
+    const url = decodeEntities(match[2]);
+    if (isLikelyMediaUrl(url)) urls.push(url);
+  }
+  return urls.filter((url, idx, arr) => arr.indexOf(url) === idx).map((url, idx) => ({
+    dateStr: formatDate(Date.now() / 1000),
+    postId: sanitizeFilename(albumId || 'erome'),
+    title,
+    mediaIdx: idx + 1,
+    entry: { url, kind: mediaKindForUrl(url), audioUrls: [], hlsUrl: null, referer: albumUrl },
+  }));
+}
+
+function extractEromeAlbumLinks(html, baseUrl) {
+  const links = [];
+  const re = /\bhref=(["'])(.*?)\1/gi;
+  let match;
+  while ((match = re.exec(html || ''))) {
+    const href = decodeEntities(match[2]);
+    const full = href.startsWith('http') ? href : new URL(href, baseUrl).href;
+    try {
+      const parsed = new URL(full);
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      if (parsed.hostname.endsWith('erome.com') && parts[0] === 'a' && parts[1]) links.push(full);
+    } catch {}
+  }
+  return links.filter((url, idx, arr) => arr.indexOf(url) === idx);
+}
+
+async function fetchRedgifsMedia(inputInfo, log = () => {}) {
+  const token = await getRedgifsToken();
+  if (!token) throw new Error('Could not get RedGIFs temporary API token.');
+  const headers = { ...API_HEADERS, Authorization: `Bearer ${token}` };
+
+  if (inputInfo.kind === 'post') {
+    const url = await getRedgifsVideoUrl(inputInfo.value);
+    if (!url) return [];
+    return mediaFromRedgifsPayload({ gifs: [{ id: inputInfo.value, urls: { hd: url }, createDate: Date.now() / 1000 }] }, inputInfo.value);
+  }
+
+  const all = [];
+  for (let page = 1; page <= MAX_REDGIFS_PAGES; page++) {
+    log(`Fetching RedGIFs page ${page}...`);
+    const url = `https://api.redgifs.com/v2/users/${encodeURIComponent(inputInfo.value)}/search?order=new&count=80&page=${page}`;
+    const payload = await httpGetJsonWithHeaders(url, headers);
+    all.push(...mediaFromRedgifsPayload(payload, inputInfo.value));
+    const totalPages = Number(payload.pages || payload.totalPages || page);
+    if (page >= totalPages || !payload.gifs || payload.gifs.length === 0) break;
+  }
+  return all;
+}
+
+async function fetchEromeMedia(inputInfo, log = () => {}) {
+  const startUrl = inputInfo.url || `https://www.erome.com/${encodeURIComponent(inputInfo.value)}`;
+  if (inputInfo.kind === 'album') {
+    const html = await httpGetText(startUrl, { ...DEFAULT_HEADERS, Referer: 'https://www.erome.com/' });
+    return mediaFromEromeAlbumHtml(html, inputInfo.value, startUrl);
+  }
+
+  log('Fetching Erome account page...');
+  const html = await httpGetText(startUrl, { ...DEFAULT_HEADERS, Referer: 'https://www.erome.com/' });
+  const albumLinks = extractEromeAlbumLinks(html, startUrl);
+  const all = [];
+  for (const albumUrl of albumLinks) {
+    if (all.length > 0) await new Promise((resolve) => setTimeout(resolve, 250));
+    const albumId = new URL(albumUrl).pathname.split('/').filter(Boolean)[1] || inputInfo.value;
+    log(`Fetching Erome album ${albumId}...`);
+    try {
+      const albumHtml = await httpGetText(albumUrl, { ...DEFAULT_HEADERS, Referer: startUrl });
+      all.push(...mediaFromEromeAlbumHtml(albumHtml, albumId, albumUrl));
+    } catch (err) {
+      log(`Skipped Erome album ${albumId}: ${err.message}`);
+    }
+  }
+  return all;
 }
 
 // ── HTTP utilities (built-in only) ─────────────────────────────
@@ -456,7 +682,11 @@ async function httpGetText(urlStr, headers = {}) {
   });
 }
 
-async function fetchListing(kind, value, after) {
+async function fetchListing(kind, value, after, redditAuthHeaders = null) {
+  if (redditAuthHeaders) {
+    return await httpGetJsonWithHeaders(buildRedditOAuthListingUrl(kind, value, after), redditAuthHeaders);
+  }
+
   const url = buildListingUrl(kind, value, after);
   try {
     return await httpGetJson(url);
@@ -510,7 +740,8 @@ function findFfmpeg() {
 
   // 2. Fall back to system-installed ffmpeg
   try {
-    const result = execFileSync('where', ['ffmpeg'], { encoding: 'utf-8', timeout: 5000 });
+    const finder = process.platform === 'win32' ? 'where' : 'which';
+    const result = execFileSync(finder, ['ffmpeg'], { encoding: 'utf-8', timeout: 5000 });
     _ffmpegPath = result.trim().split(/\r?\n/)[0] || null;
   } catch {
     _ffmpegPath = null;
@@ -721,11 +952,13 @@ class RedditDownloader {
 
   _preScan(dir) {
     try {
-      for (const sub of ['Photos', 'Videos']) {
-        const d = path.join(dir, sub);
-        if (!fs.existsSync(d)) continue;
-        for (const f of fs.readdirSync(d)) {
-          this._existingNames.add(f);
+      const stack = [dir];
+      while (stack.length) {
+        const current = stack.pop();
+        for (const f of fs.readdirSync(current, { withFileTypes: true })) {
+          const full = path.join(current, f.name);
+          if (f.isDirectory()) stack.push(full);
+          else this._existingNames.add(f.name);
         }
       }
     } catch {}
@@ -750,69 +983,84 @@ class RedditDownloader {
 
     try {
       // Phase 1: Parse input & create folders
-      const { kind, value } = normalizeInput(input);
-      this._log(`Fetching posts for ${kind}/${value}`);
+      const inputInfo = normalizeInput(input);
+      const { source, kind, value, displayName } = inputInfo;
+      this._log(`Fetching media for ${source}/${kind}/${value}`);
 
-      const targetRoot = path.join(os.homedir(), 'Downloads', value);
-      const photosDir = path.join(targetRoot, 'Photos');
-      const videosDir = path.join(targetRoot, 'Videos');
-      fs.mkdirSync(photosDir, { recursive: true });
-      fs.mkdirSync(videosDir, { recursive: true });
+      const targetRoot = path.join(os.homedir(), 'Downloads', sanitizeFilename(displayName || value));
+      fs.mkdirSync(targetRoot, { recursive: true });
       this._outputFolder = targetRoot;
       this._preScan(targetRoot);
 
       const ffmpeg = findFfmpeg();
-      this._log(ffmpeg ? `FFmpeg found: ${path.basename(ffmpeg)}` : 'FFmpeg not found — videos will lack audio');
+      this._log(ffmpeg ? `FFmpeg found: ${path.basename(ffmpeg)}` : 'FFmpeg not found — Reddit videos may lack muxed audio');
       if (mediaFilter !== 'both') this._log(`Media filter: ${mediaFilter} only`);
 
-      // Phase 2: Fetch posts with pagination
+      // Phase 2: Fetch posts/media with pagination
       const allMedia = [];
-      let after = null;
-
-      for (let page = 0; page < MAX_PAGES; page++) {
-        if (this._cancelled) break;
-        await this._waitIfPaused();
-        if (this._cancelled) break;
-
-        this._log(`Fetching page ${page + 1}...`);
-
-        let payload;
+      let redditAuthHeaders = null;
+      if (source === 'reddit') {
         try {
-          payload = await fetchListing(kind, value, after);
-          if (payload.data?._source === 'rss') {
-            this._log('Reddit JSON was blocked; using limited RSS fallback for this listing');
-          }
+          redditAuthHeaders = await getRedditAuthHeaders(settings);
+          if (redditAuthHeaders) this._log('Using Reddit OAuth API credentials');
         } catch (err) {
-          this._log(`API error: ${err.message}`);
-          if (allMedia.length === 0) throw err;
-          this._log('Stopping pagination after API error; downloading media found so far');
-          break;
+          this._log(`Reddit OAuth failed: ${err.message}; falling back to public Reddit listing`);
         }
+      }
 
-        const children = ((payload.data || {}).children) || [];
-        if (children.length === 0) {
-          this._log('No more posts found');
-          break;
-        }
+      if (source === 'redgifs') {
+        allMedia.push(...await fetchRedgifsMedia(inputInfo, (msg) => this._log(msg)));
+      } else if (source === 'erome') {
+        allMedia.push(...await fetchEromeMedia(inputInfo, (msg) => this._log(msg)));
+      } else {
+        let after = null;
+        for (let page = 0; page < MAX_PAGES; page++) {
+          if (this._cancelled) break;
+          await this._waitIfPaused();
+          if (this._cancelled) break;
 
-        for (const child of children) {
-          const post = child.data || {};
-          const postId = post.id || 'post';
-          const title = sanitizeFilename(post.title || 'untitled');
-          const dateStr = formatDate(post.created_utc);
-          const entries = getMediaEntries(post);
-          for (let idx = 0; idx < entries.length; idx++) {
-            allMedia.push({ dateStr, postId, title, mediaIdx: idx + 1, entry: entries[idx] });
+          this._log(kind === 'post' ? 'Fetching Reddit post...' : `Fetching Reddit page ${page + 1}...`);
+
+          let payload;
+          try {
+            payload = await fetchListing(kind, value, after, redditAuthHeaders);
+            if (payload.data?._source === 'rss') {
+              this._log('Reddit JSON was blocked; using limited RSS fallback for this listing');
+            }
+          } catch (err) {
+            this._log(`API error: ${err.message}`);
+            if (allMedia.length === 0) throw err;
+            this._log('Stopping pagination after API error; downloading media found so far');
+            break;
           }
-        }
 
-        after = (payload.data || {}).after;
-        if (!after) {
-          this._log('Reached end of posts');
-          break;
-        }
+          const listing = Array.isArray(payload) ? payload[0] : payload;
+          const children = ((listing.data || {}).children) || [];
+          if (children.length === 0) {
+            this._log('No more posts found');
+            break;
+          }
 
-        if (page < MAX_PAGES - 1) await this._sleep(requestDelay);
+          for (const child of children) {
+            const post = child.data || {};
+            const postId = post.id || 'post';
+            const title = sanitizeFilename(post.title || 'untitled');
+            const dateStr = formatDate(post.created_utc);
+            const entries = getMediaEntries(post);
+            for (let idx = 0; idx < entries.length; idx++) {
+              allMedia.push({ dateStr, postId, title, mediaIdx: idx + 1, entry: entries[idx] });
+            }
+          }
+
+          if (kind === 'post') break;
+          after = (listing.data || {}).after;
+          if (!after) {
+            this._log('Reached end of posts');
+            break;
+          }
+
+          if (page < MAX_PAGES - 1) await this._sleep(requestDelay);
+        }
       }
 
       if (this._cancelled) {
@@ -856,7 +1104,7 @@ class RedditDownloader {
         }
 
         const filename = `${dateStr}_${postId}_${title}_${String(mediaIdx).padStart(3, '0')}${ext}`;
-        const outDir = isVideoFile ? videosDir : photosDir;
+        const outDir = path.join(targetRoot, outputFolderForEntry(entry));
         const outPath = path.join(outDir, filename);
 
         const progress = Math.round(((i + 1) / total) * 100);
@@ -900,7 +1148,8 @@ class RedditDownloader {
 
         // Fallback: direct download from fallback/direct URL
         if (!ok && !this._cancelled && entry.kind !== 'redgifs') {
-          ok = await this._streamDownload(entry.url, outPath);
+          const downloadHeaders = entry.referer ? { Referer: entry.referer } : {};
+          ok = await this._streamDownload(entry.url, outPath, downloadHeaders);
           if (this._cancelled) break;
 
           if (ok && entry.kind === 'reddit_video') {
@@ -971,4 +1220,11 @@ module.exports._internals = {
   getMediaEntries,
   parseRedditRssFeed,
   redditStatusMessage,
+  normalizeInput,
+  mediaFromRedgifsPayload,
+  mediaFromEromeAlbumHtml,
+  extractEromeAlbumLinks,
+  buildRedditOAuthListingUrl,
+  outputSubfolders,
+  outputFolderForEntry,
 };
