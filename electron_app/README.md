@@ -1,12 +1,12 @@
 # GK Media Downloader
 
-Portable Linux-first desktop app for downloading media from Reddit, RedGIFs, and Erome accounts/posts.
+Portable Linux-first desktop app for downloading media from Reddit, RedGIFs, Erome, and Facebook media URLs.
 
 ## Features
 
 - Reddit users, subreddits, and individual post URLs.
 - Optional Reddit OAuth credentials for listings that Reddit blocks with HTTP 403.
-- RedGIFs profile and single-post downloads.
+- RedGIFs profile, niche, and single-post downloads.
 - Erome account and album downloads.
 - Images, GIFs, videos, and audio-capable video downloads.
 - Reddit video audio handling through bundled FFmpeg/HLS and mux fallback.
@@ -23,8 +23,11 @@ Portable Linux-first desktop app for downloading media from Reddit, RedGIFs, and
    - `https://www.reddit.com/r/.../comments/<id>/...`
    - `https://www.redgifs.com/users/<name>`
    - `https://www.redgifs.com/watch/<slug>`
+   - `https://www.redgifs.com/niches/<niche>`
    - `https://www.erome.com/<name>`
    - `https://www.erome.com/a/<album>`
+   - `https://www.facebook.com/photo?fbid=<id>`
+   - `https://www.facebook.com/watch/?v=<id>`
 3. Optional: add Reddit OAuth client ID/secret in Settings if Reddit returns HTTP 403.
 4. Click **Start**.
 
@@ -57,7 +60,7 @@ Artifacts are written to `dist-electron/`:
 
 ## Responsible use
 
-Use this app only for media you have the right or permission to download, and comply with Reddit, RedGIFs, Erome, copyright, privacy, and local rules.
+Use this app only for media you have the right or permission to download, and comply with Reddit, RedGIFs, Erome, Facebook, copyright, privacy, and local rules.
 
 ## License
 

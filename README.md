@@ -2,7 +2,7 @@
 
 # GK Media Downloader
 
-**Portable Linux media downloader for Reddit, RedGIFs, and Erome accounts/posts.**
+**Portable Linux media downloader for Reddit, RedGIFs, Erome, and Facebook media URLs.**
 
 Download images, GIFs, videos, and Reddit videos with audio into one flat media folder per source.
 
@@ -12,8 +12,9 @@ Download images, GIFs, videos, and Reddit videos with audio into one flat media 
 
 - **Reddit support**: users, subreddits, and individual post URLs.
 - **Reddit OAuth option**: add client ID/secret in Settings to use `oauth.reddit.com` when public Reddit listings return HTTP 403.
-- **RedGIFs support**: full profile pagination and single RedGIFs post URLs.
+- **RedGIFs support**: full profile pagination, niche pages, and single RedGIFs post URLs.
 - **Erome support**: account pages and album URLs.
+- **Facebook support**: best-effort public photo/video URL extraction.
 - **Flat output**: all downloaded media goes into one folder; no `Photos/`, `Videos/`, or `Audio/` subfolders.
 - **Video audio**: bundled FFmpeg handles Reddit HLS/audio muxing when available.
 - **Controls**: pause, resume, cancel, open output folder, and save logs.
@@ -28,8 +29,11 @@ Download images, GIFs, videos, and Reddit videos with audio into one flat media 
    - `https://www.reddit.com/r/.../comments/<id>/...`
    - `https://www.redgifs.com/users/<name>`
    - `https://www.redgifs.com/watch/<slug>`
+   - `https://www.redgifs.com/niches/<niche>`
    - `https://www.erome.com/<name>`
    - `https://www.erome.com/a/<album>`
+   - `https://www.facebook.com/photo?fbid=<id>`
+   - `https://www.facebook.com/watch/?v=<id>`
 3. If Reddit returns HTTP 403, create a Reddit app at `https://www.reddit.com/prefs/apps` and enter the client ID/secret in Settings.
 4. Click **Start**.
 
@@ -63,7 +67,7 @@ Linux artifacts are written to `electron_app/dist-electron/`:
 
 ## Responsible use
 
-GK Media Downloader is intended for lawful personal archiving and organization of media that you have the right or permission to download. You are responsible for complying with Reddit, RedGIFs, Erome, copyright, privacy, and local rules. This project is not affiliated with, endorsed by, or sponsored by Reddit, RedGIFs, Erome, or any media host.
+GK Media Downloader is intended for lawful personal archiving and organization of media that you have the right or permission to download. You are responsible for complying with Reddit, RedGIFs, Erome, Facebook, copyright, privacy, and local rules. This project is not affiliated with, endorsed by, or sponsored by Reddit, RedGIFs, Erome, or any media host.
 
 ## License
 

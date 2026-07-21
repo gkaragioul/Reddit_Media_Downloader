@@ -51,11 +51,17 @@ test('normalizes Reddit post, RedGIFs user, and Erome account URLs', () => {
     assert.deepEqual(_internals.normalizeInput('https://www.redgifs.com/users/ExampleUser'), {
         source: 'redgifs', kind: 'user', value: 'ExampleUser', displayName: 'redgifs_ExampleUser', url: 'https://www.redgifs.com/users/ExampleUser'
     });
+    assert.deepEqual(_internals.normalizeInput('https://www.redgifs.com/niches/double-blowjob'), {
+        source: 'redgifs', kind: 'niche', value: 'double-blowjob', displayName: 'redgifs_niche_double-blowjob', url: 'https://www.redgifs.com/niches/double-blowjob'
+    });
     assert.deepEqual(_internals.normalizeInput('https://www.erome.com/a/exampleuser'), {
         source: 'erome', kind: 'album', value: 'exampleuser', displayName: 'erome_exampleuser', url: 'https://www.erome.com/a/exampleuser'
     });
     assert.deepEqual(_internals.normalizeInput('https://www.erome.com/exampleuser'), {
         source: 'erome', kind: 'user', value: 'exampleuser', displayName: 'erome_exampleuser', url: 'https://www.erome.com/exampleuser'
+    });
+    assert.deepEqual(_internals.normalizeInput('https://www.facebook.com/photo?fbid=1083587167330441&set=a.214939680861865'), {
+        source: 'facebook', kind: 'post', value: '1083587167330441', displayName: 'facebook_1083587167330441', url: 'https://www.facebook.com/photo?fbid=1083587167330441&set=a.214939680861865'
     });
 });
 
@@ -107,4 +113,24 @@ test('download layout is flat: all media goes into one folder without type subfo
     assert.equal(_internals.outputFolderForEntry({ kind: 'photo', url: 'https://x.test/a.jpg' }), '.');
     assert.equal(_internals.outputFolderForEntry({ kind: 'video', url: 'https://x.test/a.mp4' }), '.');
     assert.equal(_internals.outputFolderForEntry({ kind: 'audio', url: 'https://x.test/a.mp3' }), '.');
+});
+
+test('RedGIFs niche API URL targets the niche endpoint with newest order', () => {
+    assert.equal(
+        _internals.buildRedgifsListingUrl({ kind: 'niche', value: 'double-blowjob' }, 3),
+        'https://api.redgifs.com/v2/niches/double-blowjob/gifs?order=new&count=80&page=3'
+    );
+});
+
+test('Facebook HTML parser extracts public image and video media', () => {
+    const html = `
+      <html><head>
+        <meta property="og:image" content="https://scontent.xx.fbcdn.net/v/t39.30808-6/photo.jpg?_nc_cat=1&amp;ccb=1-7">
+        <meta property="og:video" content="https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4?_nc_cat=1&amp;ccb=1-7">
+      </head></html>`;
+    const media = _internals.mediaFromFacebookHtml(html, '1083587167330441', 'https://www.facebook.com/photo?fbid=1083587167330441');
+    assert.deepEqual(media.map((item) => [item.postId, item.title, item.entry.url, item.entry.kind]), [
+        ['1083587167330441', 'facebook-media', 'https://scontent.xx.fbcdn.net/v/t39.30808-6/photo.jpg?_nc_cat=1&ccb=1-7', 'photo'],
+        ['1083587167330441', 'facebook-media', 'https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4?_nc_cat=1&ccb=1-7', 'video'],
+    ]);
 });

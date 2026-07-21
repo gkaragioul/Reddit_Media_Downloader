@@ -66,6 +66,8 @@ function normalizeInput(text) {
     if (host.endsWith('redgifs.com')) {
       if (parts.length >= 2 && ['users', 'user'].includes(parts[0].toLowerCase()))
         return { source: 'redgifs', kind: 'user', value: parts[1], displayName: `redgifs_${parts[1]}`, url: trimmed };
+      if (parts.length >= 2 && parts[0].toLowerCase() === 'niches')
+        return { source: 'redgifs', kind: 'niche', value: parts[1], displayName: `redgifs_niche_${parts[1]}`, url: trimmed };
       if (parts.length >= 2 && ['watch', 'ifr'].includes(parts[0].toLowerCase()))
         return { source: 'redgifs', kind: 'post', value: parts[1].toLowerCase(), displayName: `redgifs_${parts[1].toLowerCase()}`, url: trimmed };
     }
@@ -77,7 +79,12 @@ function normalizeInput(text) {
         return { source: 'erome', kind: 'user', value: parts[0], displayName: `erome_${parts[0]}`, url: trimmed };
     }
 
-    throw new Error('Unsupported URL format. Use Reddit, RedGIFs, or Erome account/post URLs.');
+    if (host.endsWith('facebook.com') || host.endsWith('fb.watch')) {
+      const id = parsed.searchParams.get('fbid') || parsed.searchParams.get('v') || parts.filter(Boolean).pop() || 'facebook-media';
+      return { source: 'facebook', kind: 'post', value: sanitizeFilename(id), displayName: `facebook_${sanitizeFilename(id)}`, url: trimmed };
+    }
+
+    throw new Error('Unsupported URL format. Use Reddit, RedGIFs, Erome, or Facebook media URLs.');
   }
 
   if (trimmed.toLowerCase().startsWith('u/')) return { source: 'reddit', kind: 'user', value: trimmed.slice(2), displayName: trimmed.slice(2), url: null };
@@ -542,6 +549,14 @@ function mediaFromRedgifsPayload(payload, username) {
   }).filter((item) => item.entry.url);
 }
 
+function buildRedgifsListingUrl(inputInfo, page) {
+  const value = encodeURIComponent(inputInfo.value);
+  if (inputInfo.kind === 'niche') {
+    return `https://api.redgifs.com/v2/niches/${value}/gifs?order=new&count=80&page=${page}`;
+  }
+  return `https://api.redgifs.com/v2/users/${value}/search?order=new&count=80&page=${page}`;
+}
+
 function mediaFromEromeAlbumHtml(html, albumId, albumUrl) {
   const titleMatch = String(html || '').match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const rawTitle = stripTags(titleMatch?.[1] || albumId || 'erome-album').replace(/\s+-\s+EroMe\s*$/i, '');
@@ -578,6 +593,55 @@ function extractEromeAlbumLinks(html, baseUrl) {
   return links.filter((url, idx, arr) => arr.indexOf(url) === idx);
 }
 
+function extractFacebookMediaUrls(html) {
+  const text = decodeEntities(String(html || '').replace(/\\\//g, '/').replace(/\\u0025/g, '%').replace(/\\u0026/g, '&'));
+  const urls = [];
+  const metaRe = /<meta\b[^>]*(?:property|name)=(["'])(?:og:image|og:video|twitter:image|twitter:player:stream)\1[^>]*\bcontent=(["'])(https?:\/\/.*?)\2/gi;
+  let match;
+  while ((match = metaRe.exec(text))) urls.push(decodeEntities(match[3]));
+
+  const contentFirstRe = /<meta\b[^>]*\bcontent=(["'])(https?:\/\/.*?)\1[^>]*(?:property|name)=(["'])(?:og:image|og:video|twitter:image|twitter:player:stream)\3/gi;
+  while ((match = contentFirstRe.exec(text))) urls.push(decodeEntities(match[2]));
+
+  const fbCdnRe = /https?:\/\/(?:[^\s"'<>\\]+\.)?(?:fbcdn|facebook)\.net\/[^\s"'<>\\]+/gi;
+  while ((match = fbCdnRe.exec(text))) {
+    const url = decodeEntities(match[0]);
+    try {
+      const host = new URL(url).hostname.toLowerCase();
+      if (host.startsWith('static.') || url.includes('/rsrc.php/')) continue;
+      if (url.includes('/t1.30497-') || url.includes('/t39.30808-1/') || url.includes('ctp=s40x40') || url.includes('stp=cp6_')) continue;
+      if (/ctp=s(?:24|32|40|50|64|80|100)x(?:24|32|40|50|64|80|100)/.test(url)) continue;
+    } catch {}
+    urls.push(url);
+  }
+
+  return urls
+    .map((url) => url.replace(/\?.*$/, (qs) => qs.replace(/&amp;/g, '&')))
+    .filter(isLikelyMediaUrl)
+    .filter((url, idx, arr) => arr.indexOf(url) === idx);
+}
+
+function mediaFromFacebookHtml(html, postId, pageUrl) {
+  return extractFacebookMediaUrls(html).map((url, idx) => ({
+    dateStr: formatDate(Date.now() / 1000),
+    postId: sanitizeFilename(postId || 'facebook'),
+    title: 'facebook-media',
+    mediaIdx: idx + 1,
+    entry: { url, kind: mediaKindForUrl(url), audioUrls: [], hlsUrl: null, referer: pageUrl },
+  }));
+}
+
+async function fetchFacebookMedia(inputInfo, log = () => {}) {
+  if (!inputInfo.url) throw new Error('Facebook downloads require a Facebook media URL.');
+  log('Fetching Facebook media page...');
+  const html = await httpGetText(inputInfo.url, {
+    ...DEFAULT_HEADERS,
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    Referer: 'https://www.facebook.com/',
+  });
+  return mediaFromFacebookHtml(html, inputInfo.value, inputInfo.url);
+}
+
 async function fetchRedgifsMedia(inputInfo, log = () => {}) {
   const token = await getRedgifsToken();
   if (!token) throw new Error('Could not get RedGIFs temporary API token.');
@@ -591,8 +655,8 @@ async function fetchRedgifsMedia(inputInfo, log = () => {}) {
 
   const all = [];
   for (let page = 1; page <= MAX_REDGIFS_PAGES; page++) {
-    log(`Fetching RedGIFs page ${page}...`);
-    const url = `https://api.redgifs.com/v2/users/${encodeURIComponent(inputInfo.value)}/search?order=new&count=80&page=${page}`;
+    log(`Fetching RedGIFs ${inputInfo.kind} page ${page}...`);
+    const url = buildRedgifsListingUrl(inputInfo, page);
     const payload = await httpGetJsonWithHeaders(url, headers);
     all.push(...mediaFromRedgifsPayload(payload, inputInfo.value));
     const totalPages = Number(payload.pages || payload.totalPages || page);
@@ -1012,6 +1076,8 @@ class RedditDownloader {
         allMedia.push(...await fetchRedgifsMedia(inputInfo, (msg) => this._log(msg)));
       } else if (source === 'erome') {
         allMedia.push(...await fetchEromeMedia(inputInfo, (msg) => this._log(msg)));
+      } else if (source === 'facebook') {
+        allMedia.push(...await fetchFacebookMedia(inputInfo, (msg) => this._log(msg)));
       } else {
         let after = null;
         for (let page = 0; page < MAX_PAGES; page++) {
@@ -1227,4 +1293,6 @@ module.exports._internals = {
   buildRedditOAuthListingUrl,
   outputSubfolders,
   outputFolderForEntry,
+  buildRedgifsListingUrl,
+  mediaFromFacebookHtml,
 };

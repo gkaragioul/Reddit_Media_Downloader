@@ -165,7 +165,7 @@ export default function App() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Reddit, RedGIFs, or Erome account/post URL"
+            placeholder="Reddit, RedGIFs, Erome, or Facebook media URL"
             disabled={isDownloading}
             spellCheck={false}
             className="flex-1 h-10 px-3.5 bg-zinc-800 border border-zinc-600/50 rounded-lg text-[13px] text-zinc-100 placeholder:text-zinc-400 focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/20 transition-all disabled:opacity-40 outline-none"

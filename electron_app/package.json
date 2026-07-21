@@ -1,7 +1,7 @@
 {
   "name": "gkmd",
   "private": true,
-  "version": "4.3.0",
+  "version": "4.3.2",
   "description": "GK Media Downloader - portable Linux media downloader for Reddit, RedGIFs, and Erome accounts/posts",
   "author": "George Karagioules",
   "license": "GPL-3.0-or-later",
