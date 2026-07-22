@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     saveLogs: (logLines) => ipcRenderer.invoke('save-logs', logLines),
 
     getVersion: () => ipcRenderer.invoke('get-version'),
+    facebookLogin: () => ipcRenderer.invoke('facebook-login'),
 
     // Listeners (main → renderer) — each returns a cleanup function
     onDownloadProgress: (callback) => {

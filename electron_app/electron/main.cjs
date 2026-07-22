@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const RedditDownloader = require('./downloader.cjs');
@@ -104,6 +104,34 @@ ipcMain.handle('save-logs', async (_event, logLines) => {
     } catch (err) {
         return { success: false, message: err.message };
     }
+});
+
+ipcMain.handle('facebook-login', async () => {
+    const fbSession = session.fromPartition('persist:gkmd-facebook');
+    const win = new BrowserWindow({
+        width: 1100,
+        height: 780,
+        title: 'Facebook Login - GK Media Downloader',
+        backgroundColor: '#18181b',
+        webPreferences: {
+            partition: 'persist:gkmd-facebook',
+            nodeIntegration: false,
+            contextIsolation: true,
+            backgroundThrottling: false,
+        },
+    });
+    await win.loadURL('https://www.facebook.com/login');
+    return await new Promise((resolve) => {
+        const done = async () => {
+            try {
+                const cookies = await fbSession.cookies.get({ domain: 'facebook.com' });
+                resolve({ success: true, loggedIn: cookies.some((cookie) => cookie.name === 'c_user') });
+            } catch (err) {
+                resolve({ success: false, message: err.message });
+            }
+        };
+        win.on('closed', done);
+    });
 });
 
 ipcMain.handle('get-version', () => {

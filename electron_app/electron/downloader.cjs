@@ -14,7 +14,7 @@ const os = require('os');
 
 // ── Constants ──────────────────────────────────────────────────
 
-const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) GKMediaDownloader/4.3.4 Chrome/120.0 Safari/537.36';
+const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) GKMediaDownloader/4.3.5 Chrome/120.0 Safari/537.36';
 const DEFAULT_HEADERS = {
   'User-Agent': USER_AGENT,
   'Accept': '*/*',
@@ -706,6 +706,25 @@ function electronBrowserWindow() {
   }
 }
 
+function electronSession() {
+  try {
+    return require('electron').session;
+  } catch {
+    return null;
+  }
+}
+
+async function facebookCookieHeader(url = 'https://www.facebook.com/') {
+  const electronSessionModule = electronSession();
+  if (!electronSessionModule) return '';
+  try {
+    const cookies = await electronSessionModule.fromPartition('persist:gkmd-facebook').cookies.get({ url });
+    return cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join('; ');
+  } catch {
+    return '';
+  }
+}
+
 async function renderFacebookCollectionHtml(pageUrl, log = () => {}) {
   const BrowserWindow = electronBrowserWindow();
   if (!BrowserWindow) return null;
@@ -713,8 +732,9 @@ async function renderFacebookCollectionHtml(pageUrl, log = () => {}) {
     width: 1280,
     height: 1800,
     show: false,
+    paintWhenInitiallyHidden: true,
     webPreferences: {
-      images: false,
+      partition: 'persist:gkmd-facebook',
       autoplayPolicy: 'user-gesture-required',
       backgroundThrottling: false,
     },
@@ -759,8 +779,12 @@ async function fetchFacebookMedia(inputInfo, log = () => {}) {
     }
   } catch {}
   log('Fetching Facebook media page...');
+  const cookie = await facebookCookieHeader(pageUrl);
+  if (cookie.includes('c_user=')) log('Using saved Facebook login session');
+  else if (inputInfo.kind === 'collection') log('No saved Facebook login session; public reels pages may expose only the first batch. Use Settings → Open Facebook login for full collections.');
+  const facebookHeaders = cookie ? { ...FACEBOOK_HEADERS, Cookie: cookie } : FACEBOOK_HEADERS;
   const html = await httpGetText(pageUrl, {
-    ...FACEBOOK_HEADERS,
+    ...facebookHeaders,
     Referer: 'https://www.facebook.com/',
   });
   let media = mediaFromFacebookHtml(html, inputInfo.value, pageUrl, { collection: inputInfo.kind === 'collection' });
@@ -804,7 +828,7 @@ async function fetchFacebookMedia(inputInfo, log = () => {}) {
     try {
       const reelUrl = `https://www.facebook.com/watch/?v=${encodeURIComponent(id)}`;
       const reelHtml = await httpGetText(reelUrl, {
-        ...FACEBOOK_HEADERS,
+        ...facebookHeaders,
         Referer: pageUrl,
       });
       addItems(mediaFromFacebookHtml(reelHtml, id, reelUrl, { collection: false }));

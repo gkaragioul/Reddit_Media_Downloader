@@ -35,6 +35,7 @@ declare global {
       openOutputFolder: () => void;
       saveLogs: (logLines: string[]) => Promise<{ success: boolean; filePath?: string; message?: string }>;
       getVersion: () => Promise<string>;
+      facebookLogin: () => Promise<{ success: boolean; loggedIn?: boolean; message?: string }>;
       onDownloadProgress: (cb: (data: ProgressData) => void) => () => void;
       onDownloadLog: (cb: (msg: string) => void) => () => void;
       onDownloadComplete: (cb: (data: CompleteData) => void) => () => void;
@@ -125,6 +126,15 @@ export default function App() {
 
   const handleStop = useCallback(() => {
     window.electronAPI?.stopDownload();
+  }, []);
+
+  const handleFacebookLogin = useCallback(async () => {
+    const result = await window.electronAPI?.facebookLogin();
+    if (!result) return;
+    const msg = result.loggedIn
+      ? '[INFO] Facebook session saved. Reels collections can use your logged-in session.'
+      : `[INFO] Facebook login window closed${result.message ? `: ${result.message}` : '. Log in there to unlock full reels collections.'}`;
+    setLogs((prev) => [...prev, msg]);
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -316,6 +326,21 @@ export default function App() {
                   className="flex-1 h-1 bg-zinc-700 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
                 />
                 <span className="text-[11px] text-zinc-400 tabular-nums w-8 text-right">{settings.requestDelay}s</span>
+              </div>
+
+              <div className="pt-3 border-t border-zinc-700/70 space-y-2">
+                <div>
+                  <span className="text-[12px] text-zinc-300 font-medium">Facebook session</span>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">
+                    Optional. Log in here when Facebook reels pages only expose the first public batch.
+                  </p>
+                </div>
+                <button
+                  onClick={handleFacebookLogin}
+                  className="self-start px-3 py-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-[11px] font-medium rounded-md transition-colors"
+                >
+                  Open Facebook login
+                </button>
               </div>
 
               <div className="pt-3 border-t border-zinc-700/70 space-y-2">
