@@ -14,7 +14,7 @@ const os = require('os');
 
 // ── Constants ──────────────────────────────────────────────────
 
-const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) GKMediaDownloader/4.3.0 Chrome/120.0 Safari/537.36';
+const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) GKMediaDownloader/4.3.4 Chrome/120.0 Safari/537.36';
 const DEFAULT_HEADERS = {
   'User-Agent': USER_AGENT,
   'Accept': '*/*',
@@ -51,6 +51,7 @@ const AUDIO_EXT = new Set(['.mp3', '.m4a', '.aac', '.ogg', '.wav', '.flac']);
 const VALID_EXT = new Set([...IMAGE_EXT, ...VIDEO_EXT, ...AUDIO_EXT]);
 const MAX_PAGES = 12;
 const MAX_REDGIFS_PAGES = 1000;
+const MAX_FACEBOOK_COLLECTION_ITEMS = 80;
 const DOWNLOAD_TIMEOUT = 45_000;
 const API_TIMEOUT = 30_000;
 const MAX_REDIRECTS = 5;
@@ -664,6 +665,28 @@ function extractFacebookMediaUrls(html, options = {}) {
   return cleaned;
 }
 
+function extractFacebookVideoIds(html) {
+  const raw = String(html || '');
+  const text = decodeEntities(raw.replace(/\\\//g, '/').replace(/\\u0025/g, '%').replace(/\\u0026/g, '&'));
+  const ids = [];
+  const add = (id) => {
+    if (/^\d{8,}$/.test(id) && !ids.includes(id)) ids.push(id);
+  };
+  const patterns = [
+    /\\?"video_id\\?"\s*:\s*\\?"(\d{8,})\\?"/g,
+    /\\?"videoID\\?"\s*:\s*\\?"(\d{8,})\\?"/g,
+    /\\?"videoId\\?"\s*:\s*\\?"(\d{8,})\\?"/g,
+    /\/watch\/\?v=(\d{8,})/g,
+    /\/reel\/(\d{8,})/g,
+    /\/videos\/(\d{8,})/g,
+  ];
+  for (const re of patterns) {
+    let match;
+    while ((match = re.exec(text))) add(match[1]);
+  }
+  return ids;
+}
+
 function mediaFromFacebookHtml(html, postId, pageUrl, options = {}) {
   return extractFacebookMediaUrls(html, options).map((url, idx) => ({
     dateStr: formatDate(Date.now() / 1000),
@@ -672,6 +695,56 @@ function mediaFromFacebookHtml(html, postId, pageUrl, options = {}) {
     mediaIdx: idx + 1,
     entry: { url, kind: mediaKindForUrl(url), audioUrls: [], hlsUrl: null, referer: pageUrl },
   }));
+}
+
+function electronBrowserWindow() {
+  try {
+    // Available only inside the packaged Electron main process, not during node:test.
+    return require('electron').BrowserWindow;
+  } catch {
+    return null;
+  }
+}
+
+async function renderFacebookCollectionHtml(pageUrl, log = () => {}) {
+  const BrowserWindow = electronBrowserWindow();
+  if (!BrowserWindow) return null;
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 1800,
+    show: false,
+    webPreferences: {
+      images: false,
+      autoplayPolicy: 'user-gesture-required',
+      backgroundThrottling: false,
+    },
+  });
+  try {
+    log('Rendering Facebook reels page and auto-scrolling for more entries...');
+    await win.loadURL(pageUrl, { extraHeaders: 'Accept-Language: en-US,en;q=0.9\n' });
+    await win.webContents.executeJavaScript(`new Promise((resolve) => setTimeout(resolve, 2500))`);
+    let lastHeight = 0;
+    let stable = 0;
+    for (let i = 0; i < 18; i++) {
+      const result = await win.webContents.executeJavaScript(`(async () => {
+        window.scrollTo(0, document.body.scrollHeight);
+        await new Promise((resolve) => setTimeout(resolve, 1800));
+        return { height: document.body.scrollHeight, text: document.body.innerText.slice(0, 200) };
+      })()`);
+      const height = Number(result?.height || 0);
+      log(`Facebook scroll ${i + 1}/18`);
+      if (height && height === lastHeight) stable += 1;
+      else stable = 0;
+      lastHeight = height;
+      if (stable >= 3) break;
+    }
+    return await win.webContents.executeJavaScript('document.documentElement.outerHTML');
+  } catch (err) {
+    log(`Facebook rendered scroll unavailable: ${err.message}`);
+    return null;
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
 }
 
 async function fetchFacebookMedia(inputInfo, log = () => {}) {
@@ -690,7 +763,58 @@ async function fetchFacebookMedia(inputInfo, log = () => {}) {
     ...FACEBOOK_HEADERS,
     Referer: 'https://www.facebook.com/',
   });
-  return mediaFromFacebookHtml(html, inputInfo.value, pageUrl, { collection: inputInfo.kind === 'collection' });
+  let media = mediaFromFacebookHtml(html, inputInfo.value, pageUrl, { collection: inputInfo.kind === 'collection' });
+  let ids = extractFacebookVideoIds(html);
+
+  if (inputInfo.kind === 'collection' && ids.length < MAX_FACEBOOK_COLLECTION_ITEMS) {
+    const renderedHtml = await renderFacebookCollectionHtml(pageUrl, log);
+    if (renderedHtml) {
+      const renderedMedia = mediaFromFacebookHtml(renderedHtml, inputInfo.value, pageUrl, { collection: true });
+      const renderedIds = extractFacebookVideoIds(renderedHtml);
+      const urls = new Set(media.map((item) => item.entry.url));
+      for (const item of renderedMedia) {
+        if (!urls.has(item.entry.url)) {
+          urls.add(item.entry.url);
+          media.push(item);
+        }
+      }
+      ids = [...ids, ...renderedIds].filter((id, idx, arr) => arr.indexOf(id) === idx);
+    }
+  }
+
+  if (inputInfo.kind !== 'collection') return media;
+
+  ids = ids.slice(0, MAX_FACEBOOK_COLLECTION_ITEMS);
+  if (ids.length === 0) return media;
+
+  log(`Found ${ids.length} Facebook reel IDs; fetching playable reel pages...`);
+  const all = [];
+  const seenUrls = new Set();
+  const addItems = (items) => {
+    for (const item of items) {
+      const url = item?.entry?.url;
+      if (!url || seenUrls.has(url)) continue;
+      seenUrls.add(url);
+      all.push(item);
+    }
+  };
+  addItems(media);
+
+  for (const id of ids) {
+    try {
+      const reelUrl = `https://www.facebook.com/watch/?v=${encodeURIComponent(id)}`;
+      const reelHtml = await httpGetText(reelUrl, {
+        ...FACEBOOK_HEADERS,
+        Referer: pageUrl,
+      });
+      addItems(mediaFromFacebookHtml(reelHtml, id, reelUrl, { collection: false }));
+      if (ids.length > 10) log(`Checked Facebook reel ${Math.min(ids.indexOf(id) + 1, ids.length)}/${ids.length}`);
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    } catch (err) {
+      log(`Skipped Facebook reel ${id}: ${err.message}`);
+    }
+  }
+  return all;
 }
 
 async function fetchRedgifsMedia(inputInfo, log = () => {}) {
@@ -1346,4 +1470,5 @@ module.exports._internals = {
   outputFolderForEntry,
   buildRedgifsListingUrl,
   mediaFromFacebookHtml,
+  extractFacebookVideoIds,
 };

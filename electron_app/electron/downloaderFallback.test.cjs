@@ -138,10 +138,11 @@ test('Facebook HTML parser extracts public image and video media', () => {
     ]);
 });
 
-test('Facebook reel collection parser keeps multiple playable reel videos', () => {
+test('Facebook reel collection parser keeps multiple playable reel videos and reel IDs', () => {
     const html = `
-      <script>{"browser_native_hd_url":"https:\\/\\/video.xx.fbcdn.net\\/first.mp4?token=1","browser_native_sd_url":"https:\\/\\/video.xx.fbcdn.net\\/first-sd.mp4?token=1"}</script>
-      <script>{"browser_native_hd_url":"https:\\/\\/video.xx.fbcdn.net\\/second.mp4?token=2"}</script>`;
+      <script>{"video_id":"111111111111111","browser_native_hd_url":"https:\\/\\/video.xx.fbcdn.net\\/first.mp4?token=1","browser_native_sd_url":"https:\\/\\/video.xx.fbcdn.net\\/first-sd.mp4?token=1"}</script>
+      <script>{"video_id":"222222222222222","browser_native_hd_url":"https:\\/\\/video.xx.fbcdn.net\\/second.mp4?token=2"}</script>
+      <script>{\"video_id\":\"333333333333333\"}</script>`;
     const single = _internals.mediaFromFacebookHtml(html, '27300808292885948', 'https://www.facebook.com/reel/27300808292885948');
     assert.deepEqual(single.map((item) => item.entry.url), ['https://video.xx.fbcdn.net/first.mp4?token=1']);
 
@@ -150,4 +151,5 @@ test('Facebook reel collection parser keeps multiple playable reel videos', () =
         'https://video.xx.fbcdn.net/first.mp4?token=1',
         'https://video.xx.fbcdn.net/second.mp4?token=2',
     ]);
+    assert.deepEqual(_internals.extractFacebookVideoIds(html), ['111111111111111', '222222222222222', '333333333333333']);
 });
