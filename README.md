@@ -69,6 +69,10 @@ Linux artifacts are written to `electron_app/dist-electron/`:
 
 GK Media Downloader is intended for lawful personal archiving and organization of media that you have the right or permission to download. You are responsible for complying with Reddit, RedGIFs, Erome, Facebook, copyright, privacy, and local rules. This project is not affiliated with, endorsed by, or sponsored by Reddit, RedGIFs, Erome, or any media host.
 
+## Disclaimer
+
+GK Media Downloader is provided as is, without warranty of any kind, under the [GNU General Public License v3.0 or later](LICENSE). Use it at your own risk; you are responsible for how you use it. It downloads media that other people posted to Reddit, RedGIFs, Erome, and Facebook, and you are responsible for respecting Reddit's terms, the other sites' terms, and the rights of the people who posted that media. Sites can change or block access at any time, so downloads may be incomplete. If you sign in to Facebook in the app, that session is kept on your computer.
+
 ## License
 
 GPL-3.0-or-later. Bundled third-party components retain their own license notices, including the GPL-enabled FFmpeg build used for video muxing.
