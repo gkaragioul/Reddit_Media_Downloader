@@ -8,6 +8,12 @@ Download images, GIFs, videos, and Reddit videos with audio into one flat media 
 
 </div>
 
+<p align="center">
+  <a href="https://buymeacoffee.com/gkaragioul"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee"></a><br>
+  <sub>Free to download and use. Tips are voluntary and don't buy support or a warranty.</sub>
+</p>
+
+
 ## Features
 
 - **Reddit support**: users, subreddits, and individual post URLs.
