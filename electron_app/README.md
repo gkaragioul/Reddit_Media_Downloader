@@ -62,6 +62,8 @@ Artifacts are written to `dist-electron/`:
 
 Use this app only for media you have the right or permission to download, and comply with Reddit, RedGIFs, Erome, Facebook, copyright, privacy, and local rules.
 
+The optional Facebook login (Settings, **Open Facebook login**) keeps Facebook's session cookies on your computer in the app's persistent Electron session (`Partitions/gkmd-facebook` in the app's user-data folder) and sends them with later Facebook page requests. See the main [README](../README.md#responsible-use) for how to end that session.
+
 ## License
 
 GPL-3.0-or-later. Bundled third-party components retain their own license notices, including the GPL-enabled FFmpeg build used for video muxing.
